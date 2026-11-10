@@ -774,5 +774,11 @@ internal static class Loc
         ["周一"] = "Mon",
         ["周六"] = "Sat",
         ["周日"] = "Sun",
+        ["在任务栏上显示"] = "Show on the taskbar",
+        ["开始菜单里的托盘按钮"] = "Tray button in the Start menu",
+        ["开始菜单里的状态栏"] = "Status in the Start menu",
+        ["托盘按钮"] = "Tray button",
+        ["窗口最小化到台前调度"] = "Minimize to Stage Manager",
+        ["通知按钮"] = "Notifications button",
     };
 }
