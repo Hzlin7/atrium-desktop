@@ -90,8 +90,16 @@ public sealed partial class MainWindow : Window
         InitializeComponent();
         Title = App.WindowTitle;
         Loc.Localize(RootGrid);
+        // The inspector lives in its own ScrollViewer; localize it directly as
+        // well, and again when a page (re)appears below.
+        Loc.Localize(InspectorStack);
+        Loc.Localize(FoldedInspector);
         LocalizeNav();
-        RootGrid.Loaded += (_, _) => Loc.Localize(RootGrid);
+        RootGrid.Loaded += (_, _) =>
+        {
+            Loc.Localize(RootGrid);
+            Loc.Localize(InspectorStack);
+        };
         RootGrid.Loaded += (_, _) => ContinuousCorners.Install(RootGrid);
         RootGrid.Loaded += (_, _) => LoadStageArt(); // the Stage Manager page's pictures, ready before it opens
 #if ATRIUM_DEVELOPMENT
@@ -210,6 +218,12 @@ public sealed partial class MainWindow : Window
         // The design page reads wider than a settings page.
         CenterStack.MaxWidth = _mains[index] == DesignStack ? 1280 : 1120;
         ArrangeInspector();
+        // Pages and the inspector are created/reparented lazily; translate the
+        // one being shown now, so a language switch does not wait for a restart.
+        Loc.Localize(_mains[index]);
+        if (_sides[index] is { } pageSide) Loc.Localize(pageSide);
+        Loc.Localize(InspectorStack);
+        Loc.Localize(FoldedInspector);
         CenterScroll.ChangeView(null, 0, null, true);
         InspectorScroll.ChangeView(null, 0, null, true);
         if (index < 3) UpdateHero();
