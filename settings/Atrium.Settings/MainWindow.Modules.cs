@@ -1372,9 +1372,9 @@ public sealed partial class MainWindow
             _time.Text = now.ToString("HH:mm:ss");
             double tw = TextWidth("00:00:00", 20, true);
             Box(_time, edge, top, tw + 4, bh);
-            int wd = ((int)now.DayOfWeek + 6) % 7;
-            _date.Text = Loc.English ? $"{Loc.T(WeekShort[wd])}, {Loc.T(Months[now.Month - 1])} {now.Day}"
-                                     : $"{now.Month}月{now.Day}日 星期{WeekNames[wd]}";
+            int todayWd = ((int)now.DayOfWeek + 6) % 7;
+            _date.Text = Loc.English ? $"{Loc.T(WeekShort[todayWd])}, {Loc.T(Months[now.Month - 1])} {now.Day}"
+                                     : $"{now.Month}月{now.Day}日 星期{WeekNames[todayWd]}";
             _lunar.Text = WidgetFaces.LunarLine(now);
             double tl = edge + tw + 16, mid = top + bh / 2;
             Box(_date, tl, mid - 19, CW - edge - tl, 20);
