@@ -82,7 +82,6 @@ public sealed partial class MainWindow : Window
     private bool _folded; // a narrow window: the inspector's groups under the workspace
     private int _flashId;
     private bool _updatingCoreSwitch, _coreChanging = true;
-    private bool _languageChanging;
     private Process? _coreProcess;
     private CancellationTokenSource? _updateCheck;
 
@@ -169,20 +168,6 @@ public sealed partial class MainWindow : Window
         Nav.SelectedIndex = page;
         _ = ConnectAndLoadAsync();
         _ = CheckForUpdatesAsync(); // once per settings window; no resident polling
-    }
-
-    // A language switch builds the new window while this one is still open;
-    // release the core pipe first so the new window can connect to it.
-    internal void ReleaseForReload()
-    {
-        _updatesClosed = true;
-        _updateCheck?.Cancel();
-        _downloadTimer?.Stop();
-        _settingsWatcher?.Dispose();
-        _settingsWatcher = null;
-        _widgetWatcher?.Dispose();
-        _widgetWatcher = null;
-        _client.Dispose();
     }
 
     // ---- Pages ----
@@ -568,22 +553,12 @@ public sealed partial class MainWindow : Window
         if (_updatesClosed) return;
         _saved = saved;
         _current = current;
-        // A language switch re-created the window: restore whichever edits were
-        // unsaved at that moment, then send them to the core as the preview.
-        var pending = App.TakePendingState();
-        bool hasPending = pending.Current != null && pending.Saved != null;
-        if (hasPending)
-        {
-            _saved = pending.Saved!;
-            _current = pending.Current!;
-        }
         _coreChanging = false;
         WatchCore();
         WatchSettingsFile();
         ShowStatus(_client.Connected);
         LoadIntoControls();
         UpdateButtons();
-        if (hasPending) SchedulePreview();
         if (Content is FrameworkElement { IsLoaded: true }) App.SignalStartupReady(_client.Connected && _client.StateConfirmed);
         else if (Content is FrameworkElement root) root.Loaded += (_, _) => App.SignalStartupReady(_client.Connected && _client.StateConfirmed);
     }
@@ -704,7 +679,6 @@ public sealed partial class MainWindow : Window
 
     private async void ReloadExternal()
     {
-        if (_languageChanging) return;
         int id = ++_settingsReload;
         await Task.Delay(120); // one reload for a burst of writes
         if (id != _settingsReload || _updatesClosed || !_client.Connected) return;
@@ -1002,35 +976,11 @@ public sealed partial class MainWindow : Window
         if (sender is DependencyObject root) Loc.Localize(root);
     }
 
-    // The language applies at once: save only that key (other unsaved edits
-    // stay unsaved), then re-create the window in the new language with the
-    // current snapshots so the edits are still there.
-    private async void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
+    private void OnLanguageChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (_loading || _languageChanging) return;
-        string language = (LanguagePicker.SelectedItem as ComboBoxItem)?.Tag as string ?? "auto";
-        if (language == _current.Language) return;
-        _languageChanging = true;
-        try
-        {
-            var saved = _saved.Clone();
-            saved.Language = language;
-            var error = await _client.CommitAsync(saved);
-            if (_updatesClosed) return;
-            if (error != null)
-            {
-                _loading = true;
-                LanguagePicker.SelectedIndex = _saved.Language switch { "zh" => 1, "en" => 2, _ => 0 };
-                _loading = false;
-                ShowMessage(InfoBarSeverity.Error, Loc.T("保存失败"), error);
-                return;
-            }
-            _current.Language = language;
-            _saved = saved;
-            Loc.Apply(language);
-            App.ReloadWindow(7, _current, _saved);
-        }
-        finally { _languageChanging = false; }
+        if (_loading) return;
+        _current.Language = (LanguagePicker.SelectedItem as ComboBoxItem)?.Tag as string ?? "auto";
+        Changed();
     }
 
     private void OnHideBannersToggled(object sender, RoutedEventArgs e)

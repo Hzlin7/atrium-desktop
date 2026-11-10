@@ -61,8 +61,6 @@ public:
     void SetUnread(int count);
     // Network, battery and volume for the status icon.
     void SetStatus(const SystemStatus& status);
-    // The interface language changed: a visible tooltip is drawn again.
-    void ReloadLanguage();
     // The app at `index` (0-based, in bar order) as a click on it would (Win + digit).
     void ActivateIndex(int index);
     // Screen rectangle of an entry ("#start", "#notify", an app key); empty if not shown.

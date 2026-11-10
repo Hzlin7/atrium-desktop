@@ -108,11 +108,6 @@ void CalendarPanel::Close()
     lastClosed_ = GetTickCount64();
 }
 
-void CalendarPanel::ReloadLanguage()
-{
-    surface_.Invalidate();
-}
-
 float CalendarPanel::Hover(Canvas& c, const std::wstring& id, bool on)
 {
     auto& f = hoverAnim_[id];

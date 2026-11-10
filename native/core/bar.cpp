@@ -1470,11 +1470,6 @@ void Bar::SetStatus(const SystemStatus& status)
     UpdateTooltips();
 }
 
-void Bar::ReloadLanguage()
-{
-    UpdateTooltips();
-}
-
 void Bar::SetUnread(int count)
 {
     if (count == unread_)

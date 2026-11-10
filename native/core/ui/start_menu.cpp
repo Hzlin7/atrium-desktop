@@ -371,11 +371,6 @@ void StartMenu::Refresh()
     surface_.Invalidate();
 }
 
-void StartMenu::ReloadLanguage()
-{
-    surface_.Invalidate();
-}
-
 void StartMenu::Rebuild()
 {
     const std::wstring openKey = folder_ >= 0 && folder_ < int(tiles_.size()) ? tiles_[size_t(folder_)].key : L"";

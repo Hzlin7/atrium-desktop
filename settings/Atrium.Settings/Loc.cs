@@ -272,7 +272,7 @@ internal static class Loc
         ["界面语言"] = "Interface language",
         ["跟随系统"] = "Follow system",
         ["简体中文"] = "Chinese (Simplified)",
-        ["Atrium 的栏、面板、小组件和设置中心使用的语言。跟随系统时，中文 Windows 使用中文，其余使用英文；更改会立即应用。"] = "The language of Atrium's bar, panels, widgets and settings. Follow system uses Chinese on Chinese Windows and English otherwise; changes apply immediately.",
+        ["Atrium 的栏、面板、小组件和设置中心使用的语言。跟随系统时，中文 Windows 使用中文，其余使用英文；更改会在保存后应用。"] = "The language of Atrium's bar, panels, widgets and settings. Follow system uses Chinese on Chinese Windows and English otherwise; changes apply after saving.",
         ["另一位置的 Atrium 正在运行，未连接本目录中的核心。"] = "Atrium is running from another location; the core in this folder was not connected.",
         ["核心回复过大"] = "The core's reply was too large",
         ["核心未响应或连接已中断，尚未确认运行状态。"] = "The core did not respond or the connection was lost; the running state is not confirmed.",

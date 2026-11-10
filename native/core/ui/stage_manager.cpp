@@ -195,11 +195,6 @@ void StageManager::SetMonitor(HMONITOR monitor, bool refresh)
     Rebuild();
 }
 
-void StageManager::ReloadLanguage()
-{
-    surface_.Invalidate();
-}
-
 void StageManager::Update(const std::vector<TaskItem>& items)
 {
     items_ = items;
