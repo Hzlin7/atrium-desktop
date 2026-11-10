@@ -1592,16 +1592,18 @@ void Bar::ShowTooltip()
     const float maxTextW = std::min(320.f, float(mi.rcWork.right - mi.rcWork.left - 2 * margin) / scale_ - 2 * kTooltipPadX);
     winrt::com_ptr<IDWriteTextFormat> format;
     winrt::com_ptr<IDWriteTextLayout> layout;
-    if (FAILED(UiTextFormat(dwrite_.get(), kTooltipFont, DWRITE_FONT_WEIGHT_MEDIUM, format.put())))
+    // UiTextFormat/UiTextLayout take physical pixels: the tooltip's size is
+    // DIP, so measure at the monitor's scale and divide the metrics back.
+    if (FAILED(UiTextFormat(dwrite_.get(), kTooltipFont * scale_, DWRITE_FONT_WEIGHT_MEDIUM, format.put())))
         return;
     format->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-    if (FAILED(UiTextLayout(dwrite_.get(), text, format.get(), maxTextW, 1000, layout.put())))
+    if (FAILED(UiTextLayout(dwrite_.get(), text, format.get(), maxTextW * scale_, 1000 * scale_, layout.put())))
         return;
     DWRITE_TEXT_METRICS metrics{};
     layout->GetMetrics(&metrics);
     tooltipText_ = std::move(text);
-    tooltipSize_ = D2D1::SizeF(std::min(maxTextW, std::ceil(metrics.widthIncludingTrailingWhitespace)) + 2 * kTooltipPadX,
-                              std::max(kTooltipMinH, std::ceil(metrics.height) + 2 * kTooltipPadY));
+    tooltipSize_ = D2D1::SizeF(std::min(maxTextW, std::ceil(metrics.widthIncludingTrailingWhitespace / scale_)) + 2 * kTooltipPadX,
+                              std::max(kTooltipMinH, std::ceil(metrics.height / scale_) + 2 * kTooltipPadY));
     int w = Px(tooltipSize_.width, scale_), h = Px(tooltipSize_.height, scale_);
     int cx = window_.left + (hit->rect.left + hit->rect.right) / 2;
     // Above the magnified icons when they grow.
