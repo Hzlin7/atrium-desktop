@@ -15,6 +15,7 @@ public partial class App : Application
 
     public static string WindowTitle => Loc.T("Atrium 设置");
     internal static MainWindow? CurrentWindow { get; private set; }
+    private static BarSettings? s_pendingCurrent, s_pendingSaved;
     private static Mutex? s_instance;
     private MainWindow? _window;
 
@@ -86,14 +87,26 @@ public partial class App : Application
     }
 
     // A language change re-creates the window: every XAML string is loaded
-    // again in the new language. The old window is saved and must not prompt.
-    internal static void ReloadWindow(int page)
+    // again in the new language. Current/saved snapshots keep unsaved edits.
+    internal static void ReloadWindow(int page, BarSettings? current = null, BarSettings? saved = null)
     {
+        s_pendingCurrent = current?.Clone();
+        s_pendingSaved = saved?.Clone();
         var old = CurrentWindow;
+        old?.ReleaseForReload();
         var window = new MainWindow(page);
         CurrentWindow = window;
         window.Activate();
         old?.Close();
+    }
+
+    // The new window takes the pending snapshots once it has loaded the core's
+    // saved settings; the old window's unsaved edits survive the re-creation.
+    internal static (BarSettings? Current, BarSettings? Saved) TakePendingState()
+    {
+        var state = (s_pendingCurrent, s_pendingSaved);
+        s_pendingCurrent = s_pendingSaved = null;
+        return state;
     }
 
     internal static void SignalStartupReady(bool coreReady)

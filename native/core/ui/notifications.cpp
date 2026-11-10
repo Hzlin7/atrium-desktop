@@ -83,6 +83,12 @@ Notifications::Notifications(HINSTANCE instance)
     };
 }
 
+void Notifications::ReloadLanguage()
+{
+    popup_.surface->Invalidate();
+    center_.surface->Invalidate();
+}
+
 void Notifications::SetOptions(double timeoutSeconds, bool hideBody, const std::wstring& placement)
 {
     const bool placementChanged = topRight_ != (placement == L"topRight");

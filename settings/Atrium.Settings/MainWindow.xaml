@@ -448,7 +448,7 @@
                                     <ComboBoxItem Content="English" Tag="en" />
                                 </ComboBox>
                                 <TextBlock Style="{StaticResource RowNoteStyle}" TextWrapping="Wrap"
-                                           Text="Atrium 的栏、面板、小组件和设置中心使用的语言。跟随系统时，中文 Windows 使用中文，其余使用英文；更改会在保存后应用。" />
+                                           Text="Atrium 的栏、面板、小组件和设置中心使用的语言。跟随系统时，中文 Windows 使用中文，其余使用英文；更改会立即应用。" />
                             </StackPanel>
                         </Border>
                         <TextBlock Text="Windows" Style="{StaticResource SectionStyle}" />

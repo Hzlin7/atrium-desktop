@@ -38,6 +38,8 @@ public:
     void SetBarHeight(float dip) { barH_ = dip; }
     HWND Hwnd() const { return surface_.Hwnd(); }
     void SetStatus(const SystemStatus& status);
+    // The interface language changed: the panel's text is drawn again.
+    void ReloadLanguage();
     // Windows reported the built-in screen's brightness (keys, quick settings).
     void BrightnessChanged(int percent);
     // Stage Manager's state, for its switch.

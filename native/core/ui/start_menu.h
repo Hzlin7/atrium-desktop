@@ -46,6 +46,8 @@ public:
     bool Visible() const { return surface_.Visible(); }
     ULONGLONG LastClosed() const { return lastClosed_; }
     void Refresh(); // an icon or the catalog changed
+    // The interface language changed: the panel's text is drawn again.
+    void ReloadLanguage();
     void SetStatus(const SystemStatus& status);
     static int TileIconPx(float scale); // the tiles' icon size (AppCatalog::PrefetchStartIcons)
     HWND Hwnd() const { return surface_.Hwnd(); }

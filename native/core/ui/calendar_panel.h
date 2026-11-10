@@ -27,6 +27,8 @@ public:
     ULONGLONG LastClosed() const { return lastClosed_; }
     void SetRadius(float dip) { radius_ = dip; surface_.SetRadius(dip); }
     void SetBarHeight(float dip) { barH_ = dip; }
+    // The interface language changed: the panel's text is drawn again.
+    void ReloadLanguage();
     HWND Hwnd() const { return surface_.Hwnd(); }
 
 private:

@@ -203,6 +203,11 @@ void ControlCenter::SetStatus(const SystemStatus& status)
     }
 }
 
+void ControlCenter::ReloadLanguage()
+{
+    surface_.Invalidate();
+}
+
 void ControlCenter::ShowPage(Page page)
 {
     if (page == page_)

@@ -237,6 +237,11 @@ void TrayPanel::Refresh()
     surface_.Invalidate();
 }
 
+void TrayPanel::ReloadLanguage()
+{
+    surface_.Invalidate();
+}
+
 float TrayPanel::Hover(Canvas& c, const std::wstring& id, bool on)
 {
     auto& f = hoverAnim_[id];

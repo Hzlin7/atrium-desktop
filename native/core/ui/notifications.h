@@ -55,6 +55,8 @@ public:
     bool CenterVisible() const { return center_.surface && center_.surface->Visible(); }
     void Clear();
     void SetOptions(double timeoutSeconds, bool hideBody, const std::wstring& placement);
+    // The interface language changed: the cards' text is drawn again.
+    void ReloadLanguage();
     // Corner radius (DIP), the bar's; the cards are concentric with it.
     void SetRadius(float dip);
     int Unread() const;

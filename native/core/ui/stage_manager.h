@@ -46,6 +46,8 @@ public:
     void SetMonitor(HMONITOR monitor, bool refresh = false);
     // The task model changed (every group, also those the bar does not show).
     void Update(const std::vector<TaskItem>& items);
+    // The interface language changed: the surface is drawn again.
+    void ReloadLanguage();
     // Everything put away comes back (on exit).
     void RestoreAll();
 

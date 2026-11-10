@@ -30,6 +30,8 @@ public:
     // Window changes still reach the open preview after the pointer leaves
     // the taskbar for a card. This does not restart its leave/fade timers.
     void Refresh(const std::vector<TaskItem>& items);
+    // The interface language changed: the cards' text is drawn again.
+    void ReloadLanguage();
     // The pointer left the app on the bar: the preview goes soon, unless the pointer comes onto it.
     void Leave();
     void Close();

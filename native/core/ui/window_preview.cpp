@@ -146,6 +146,11 @@ void WindowPreview::Refresh(const std::vector<TaskItem>& items)
         Place();
 }
 
+void WindowPreview::ReloadLanguage()
+{
+    surface_.Invalidate();
+}
+
 void WindowPreview::Layout(float scale, float maxWidthDip)
 {
     (void)scale;

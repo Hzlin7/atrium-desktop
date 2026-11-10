@@ -28,6 +28,8 @@ public:
     bool Visible() const { return surface_.Visible(); }
     ULONGLONG LastClosed() const { return lastClosed_; }
     void Refresh(); // the model has a new list
+    // The interface language changed: the panel's text is drawn again.
+    void ReloadLanguage();
     void SetRadius(float dip) { radius_ = dip; surface_.SetRadius(dip); }
     HWND Hwnd() const { return surface_.Hwnd(); }
 

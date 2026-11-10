@@ -495,8 +495,19 @@ void EnsureGuard();
 
 void ApplySettings(const Settings& s)
 {
-    if (SetLanguage(s.language) && g_app.widgets)
-        g_app.widgets->ReloadLanguage();
+    if (SetLanguage(s.language)) {
+        // Text that was already on screen is drawn again at once; the panels
+        // may be open behind the settings window.
+        if (g_app.widgets) g_app.widgets->ReloadLanguage();
+        if (g_app.start) g_app.start->ReloadLanguage();
+        if (g_app.trayPanel) g_app.trayPanel->ReloadLanguage();
+        if (g_app.control) g_app.control->ReloadLanguage();
+        if (g_app.calendar) g_app.calendar->ReloadLanguage();
+        if (g_app.notes) g_app.notes->ReloadLanguage();
+        if (g_app.preview) g_app.preview->ReloadLanguage();
+        if (g_app.stage) g_app.stage->ReloadLanguage();
+        ForBars([](Bar& bar) { bar.ReloadLanguage(); });
+    }
     g_app.desktopDisplay = s.desktopDisplay;
     g_app.displaySettings = s;
     // Popups share the bar's material and corner radius (concentric inside).
