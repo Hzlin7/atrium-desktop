@@ -65,8 +65,8 @@ public sealed partial class MainWindow : Window
 
     private static string[] PageTitles => new[]
     {
-        Loc.T("材质"), Loc.T("形状"), Loc.T("任务栏"), Loc.T("通知"), Loc.T("小组件"),
-        Loc.T("台前调度"), Loc.T("显示器"), Loc.T("系统"), Loc.T("设计语言"), Loc.T("关于"),
+        Loc.T("材质"), Loc.T("形状"), Loc.T("任务栏"), Loc.T("通知"), Loc.T("小组件"), Loc.T("台前调度"), Loc.T("显示器"), Loc.T("系统"), Loc.T("设计语言"), Loc.T("关于"),
+        Loc.T("开始菜单"), Loc.T("托盘"), Loc.T("状态栏"), Loc.T("时间"), // the bar's parts, listed under it
     };
     private readonly CoreClient _client = new();
     private readonly List<(SliderDef Def, SliderTile Tile)> _rows = new();
@@ -123,7 +123,7 @@ public sealed partial class MainWindow : Window
         var hwnd = WinRT.Interop.WindowNative.GetWindowHandle(this);
         _updateMessage = (handle, message, wparam, lparam, id, data) =>
         {
-            if (message == App.OpenAboutMessage) { Nav.SelectedIndex = 9; return IntPtr.Zero; }
+            if (message == App.OpenAboutMessage) { SelectPage(9); return IntPtr.Zero; }
             if (message is 0x007E or 0x02E0 || (message == 0x001A && wparam.ToUInt64() == 0x002F))
                 DispatcherQueue.TryEnqueue(RefreshDisplays); // hotplug, DPI or work-area changed
             return DefSubclassProc(handle, message, wparam, lparam);
@@ -146,10 +146,13 @@ public sealed partial class MainWindow : Window
             _photoThawTimer?.Stop();
             ++_photoSelection;
             StopTiles();
+            StopModules();
         };
 
-        _mains = new FrameworkElement[] { MainMaterial, MainShape, MainDock, MainNotify, MainWidgets, MainStage, MainDisplays, MainSystem, DesignStack, MainAbout };
-        _sides = new FrameworkElement?[] { SideMaterial, SideShape, SideDock, SideNotify, SideWidgets, SideStage, null, null, null, null };
+        _mains = new FrameworkElement[] { MainMaterial, MainShape, MainDock, MainNotify, MainWidgets, MainStage, MainDisplays, MainSystem, DesignStack, MainAbout,
+                                          MainStart, MainTray, MainStatus, MainClock };
+        _sides = new FrameworkElement?[] { SideMaterial, SideShape, SideDock, SideNotify, SideWidgets, SideStage, null, null, null, null,
+                                           SideStart, SideTray, SideStatus, SideClock };
         InitDisplays();
         LoupeSwitch.IsOn = true;
         BuildRows();
@@ -161,6 +164,7 @@ public sealed partial class MainWindow : Window
             if (_page == 4) { ShowWidgetMap(); RefreshGallery(); }
             if (_page == 3) ShowNotifyPreview(false);
             if (_page == 5) ShowStagePreview(false);
+            if (_page >= 10) ShowModulePreview(_page);
         };
         PathText.Text = CoreClient.SettingsPath;
         StartupSwitch.IsEnabled = !CoreClient.Development;
@@ -172,17 +176,25 @@ public sealed partial class MainWindow : Window
         var args = Environment.GetCommandLineArgs();
         int page = startPage >= 0 ? startPage
             : Array.IndexOf(args, "--page") is int i && i >= 0 && i + 1 < args.Length
-            ? args[i + 1] switch { "dock" => 2, "widgets" => 4, "stage" => 5, "displays" => 6, "system" => 7, "about" => 9, _ => 0 } : 0;
-        Nav.SelectedIndex = page;
+            ? args[i + 1] switch { "dock" => 2, "notify" => 3, "widgets" => 4, "stage" => 5, "displays" => 6, "system" => 7, "about" => 9,
+                                 "start" => 10, "tray" => 11, "status" => 12, "clock" => 13, _ => 0 } : 0;
+        SelectPage(page);
         _ = ConnectAndLoadAsync();
         _ = CheckForUpdatesAsync(); // once per settings window; no resident polling
     }
 
     // ---- Pages ----
 
+    // The navigation's items name their pages (Tag): the bar's parts sit under it, numbered after the others.
     private void OnNavChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (Nav.SelectedIndex >= 0) ShowPage(Nav.SelectedIndex);
+        if (Nav.SelectedItem is ListViewItem { Tag: string tag } && int.TryParse(tag, out int page)) ShowPage(page);
+    }
+
+    private void SelectPage(int page)
+    {
+        foreach (var item in Nav.Items)
+            if (item is ListViewItem { Tag: string tag } li && tag == page.ToString()) { Nav.SelectedItem = li; return; }
     }
 
     // A page is its workspace part (under the title, with the live preview on the first three) and its
@@ -210,6 +222,8 @@ public sealed partial class MainWindow : Window
         if (_mains[index] == MainNotify) ShowNotifyPreview(true);
         if (_mains[index] == MainStage) ShowStagePreview(true);
         if (_mains[index] == MainDisplays) RefreshDisplays();
+        if (index >= 10) EnterModulePage(index);
+        else LeaveModulePages();
         PageTitle.Text = PageTitles[index];
         ContinuousCorners.Install(_mains[index]);
         HeroBlock.Visibility = index < 3 ? Visibility.Visible : Visibility.Collapsed;
@@ -483,7 +497,7 @@ public sealed partial class MainWindow : Window
         await QueueDownloadAsync(_latestRelease);
     }
 
-    private void OnOpenUpdate(object sender, RoutedEventArgs e) => Nav.SelectedIndex = 9;
+    private void OnOpenUpdate(object sender, RoutedEventArgs e) => SelectPage(9);
 
     private async void OnCheckForUpdates(object sender, RoutedEventArgs e) => await CheckForUpdatesAsync();
 
@@ -724,6 +738,9 @@ public sealed partial class MainWindow : Window
         (Photo.Selected switch { "wallpaper" => BgWallpaper, "paper" => BgPaper, "geometry" => BgGeometry, "layers" => BgLayers, _ => BgSpecimen }).IsChecked = true;
         ClockSwitch.IsOn = _current.ShowClock;
         TraySwitch.IsOn = _current.ShowTray;
+        StartTraySwitch.IsOn = _current.StartTray;
+        StartStatusSwitch.IsOn = _current.StartStatus;
+        (_current.StartSize switch { "small" => StartSmall, "large" => StartLarge, _ => StartMedium }).IsChecked = true;
         StatusSwitch.IsOn = _current.ShowStatus;
         NotificationsSwitch.IsOn = _current.ShowNotifications;
         AutoWidthSwitch.IsOn = _current.AutoWidth;
@@ -742,6 +759,7 @@ public sealed partial class MainWindow : Window
         StageSwitch.IsOn = _current.StageManager;
         (_current.StageOnRight ? StageRight : StageLeft).IsChecked = true;
         (_current.StageAutoHide ? StageAutoHide : StageAlways).IsChecked = true;
+        StageMinimizeSwitch.IsOn = _current.StageMinimize;
         (_current.WidgetBackdrop == "wallpaper" ? BackdropWallpaper : BackdropDesktop).IsChecked = true;
         (_current.WidgetMaterial switch { "dusk" => MaterialDusk, "color" => MaterialColor, _ => MaterialGlass }).IsChecked = true;
         HideBannersSwitch.IsOn = _current.HideBanners;
@@ -763,6 +781,7 @@ public sealed partial class MainWindow : Window
         if (_page == 3) ShowNotifyPreview(false);
         if (_page == 4) ShowWidgetMap();
         if (_page == 5) ShowStagePreview(false);
+        if (_page >= 10) ShowModulePreview(_page);
     }
 
     private static Color TintColor(uint rgb) => Color.FromArgb(255, (byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
@@ -814,6 +833,8 @@ public sealed partial class MainWindow : Window
     {
         if (_loading) return;
         _current.ShowTray = TraySwitch.IsOn;
+        _current.StartTray = StartTraySwitch.IsOn;
+        _current.StartStatus = StartStatusSwitch.IsOn;
         _current.ShowStatus = StatusSwitch.IsOn;
         _current.ShowNotifications = NotificationsSwitch.IsOn;
         Changed();
@@ -1004,10 +1025,24 @@ public sealed partial class MainWindow : Window
         Changed();
     }
 
+    private void OnStageMinimizeToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _current.StageMinimize = StageMinimizeSwitch.IsOn;
+        Changed();
+    }
+
     private void OnWinKeyToggled(object sender, RoutedEventArgs e)
     {
         if (_loading) return;
         _current.WinKeyStart = WinKeySwitch.IsOn;
+        Changed();
+    }
+
+    private void OnStartSizeChecked(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string tag }) return;
+        _current.StartSize = tag;
         Changed();
     }
 
@@ -1061,6 +1096,7 @@ public sealed partial class MainWindow : Window
         UpdateCustomSwatch();
         if (_page == 3) ShowNotifyPreview(false);
         if (_page == 5) StageRenderGlass(StageCanvas.Width, StageCanvas.Height); // the material changed
+        if (_page >= 10) ShowModulePreview(_page);
         SchedulePreview();
     }
 

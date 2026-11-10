@@ -470,6 +470,10 @@ void DesktopWidgets::Load()
                 WidgetContent content;
                 content.text = e.GetNamedString(L"text", L"");
                 content.folder = e.GetNamedString(L"folder", L"");
+                if (e.HasKey(L"cities") && e.GetNamedValue(L"cities").ValueType() == json::JsonValueType::Array)
+                    for (const auto& cv : e.GetNamedArray(L"cities"))
+                        if (cv.ValueType() == json::JsonValueType::String)
+                            content.cities.emplace_back(cv.GetString());
                 if (e.HasKey(L"items") && e.GetNamedValue(L"items").ValueType() == json::JsonValueType::Array)
                     for (const auto& iv : e.GetNamedArray(L"items")) {
                         if (iv.ValueType() != json::JsonValueType::Object)
@@ -519,6 +523,12 @@ void DesktopWidgets::Save() const
         }
         if (w->kind == WidgetKind::Photos && !c.folder.empty())
             e.SetNamedValue(L"folder", json::JsonValue::CreateStringValue(c.folder));
+        if (!c.cities.empty()) {
+            json::JsonArray cities;
+            for (const std::wstring& city : c.cities)
+                cities.Append(json::JsonValue::CreateStringValue(city));
+            e.SetNamedValue(L"cities", cities);
+        }
         list.Append(e);
     }
     for (const auto& s : unplaced_)
@@ -1442,11 +1452,42 @@ void DesktopWidgets::PlaceImeWindow(Widget& w)
     ImmReleaseContext(w.surface->Hwnd(), imc);
 }
 
+// A world clock's cities: which one to change, then the city in its place (both in menus at `at`).
+void DesktopWidgets::PickCity(Widget& w, POINT at)
+{
+    if (!menu)
+        return;
+    const std::vector<std::wstring> cities = WidgetCities(w.kind, w.content.cities);
+    std::vector<MenuEntry> slots{{Tr(L"更改哪个城市"), 0, false, false, true}};
+    for (size_t i = 0; i < cities.size(); ++i)
+        slots.push_back({Tr(cities[i].c_str()), int(i) + 1});
+    Widget* target = &w;
+    menu->Open(std::move(slots), at, MenuPlace::Below, [this, target, at, cities](int slot) {
+        if (slot <= 0 || !Has(target))
+            return;
+        std::vector<MenuEntry> list{{TrFormat(L"把「%s」换成", Tr(cities[size_t(slot - 1)].c_str())), 0, false, false, true}};
+        const auto& all = WorldCities();
+        for (size_t i = 0; i < all.size(); ++i)
+            list.push_back({Tr(all[i].name), int(i) + 1, cities[size_t(slot - 1)] == all[i].name});
+        menu->Open(std::move(list), at, MenuPlace::Below, [this, target, slot, cities](int pick) {
+            if (pick <= 0 || !Has(target))
+                return;
+            Widget& w = *target;
+            std::vector<std::wstring> chosen = cities;
+            chosen[size_t(slot - 1)] = WorldCities()[size_t(pick - 1)].name;
+            w.content.cities = std::move(chosen);
+            Save();
+            w.surface->Invalidate();
+            Log(L"widgets: a world clock shows %s", w.content.cities[size_t(slot - 1)].c_str());
+        });
+    });
+}
+
 void DesktopWidgets::Menu(Widget& w)
 {
     if (!menu)
         return;
-    enum { kSmall = 1, kMedium, kLarge, kRemove, kFolder, kNextPhoto, kClearDone, kAdd };
+    enum { kSmall = 1, kMedium, kLarge, kRemove, kFolder, kNextPhoto, kClearDone, kAdd, kCities };
     std::vector<MenuEntry> entries;
     auto size = [&](int id, WidgetSize s, const wchar_t* label) { entries.push_back({label, id, w.size == s, !WidgetSupports(w.kind, s)}); };
     size(kSmall, WidgetSize::Small, Tr(L"小"));
@@ -1456,6 +1497,10 @@ void DesktopWidgets::Menu(Widget& w)
     if (w.kind == WidgetKind::Photos) {
         entries.push_back({Tr(L"选择照片文件夹…"), kFolder});
         entries.push_back({Tr(L"换一张"), kNextPhoto});
+        entries.push_back({});
+    }
+    if (HasWorldClocks(w.kind, w.size)) {
+        entries.push_back({L"更改城市…", kCities});
         entries.push_back({});
     }
     if (w.kind == WidgetKind::Reminders) {
@@ -1468,7 +1513,7 @@ void DesktopWidgets::Menu(Widget& w)
     POINT p;
     GetCursorPos(&p);
     Widget* target = &w;
-    menu->Open(std::move(entries), p, MenuPlace::Below, [this, target](int cmd) {
+    menu->Open(std::move(entries), p, MenuPlace::Below, [this, target, p](int cmd) {
         if (cmd == kAdd) {
             if (onAddWidgets)
                 onAddWidgets();
@@ -1485,6 +1530,9 @@ void DesktopWidgets::Menu(Widget& w)
             break;
         case kFolder:
             PickFolder(w);
+            break;
+        case kCities:
+            PickCity(w, p);
             break;
         case kNextPhoto:
             LoadPhoto(w, true);
