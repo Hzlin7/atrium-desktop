@@ -1,4 +1,6 @@
 #include "bar.h"
+
+#include "localization.h"
 #include "render/continuous_corners.h"
 
 #include "clock.h"
@@ -1505,24 +1507,25 @@ RECT Bar::BarRect() const
 std::wstring Bar::TooltipText(const std::wstring& key) const
 {
     if (key == kStartKey)
-        return L"\u5F00\u59CB"; // 开始
+        return Tr(L"开始");
     if (key == kNotifyKey)
-        return unread_ ? std::to_wstring(unread_) + L" \u6761\u672A\u8BFB\u901A\u77E5" : L"\u901A\u77E5"; // N 条未读通知 / 通知
+        return unread_ ? std::to_wstring(unread_) + Tr(L" 条未读通知") : Tr(L"通知");
     if (key == kTrayKey)
-        return L"\u6258\u76D8"; // 托盘
+        return Tr(L"托盘");
     if (key == kStatusKey) {
         const SystemStatus& st = status_;
-        std::wstring net = !st.connected ? L"\u672A\u8FDE\u63A5\u7F51\u7EDC" // 未连接网络
-                                         : (st.wifi ? L"Wi-Fi " : L"") + st.network + (st.wifi ? L" \u00B7 \u4FE1\u53F7 " + std::to_wstring(st.signal) + L"%" : L"");
+        std::wstring net = !st.connected ? Tr(L"未连接网络")
+                                         : (st.wifi ? L"Wi-Fi " : L"") + st.network + (st.wifi ? Tr(L" · 信号 ") + std::to_wstring(st.signal) + L"%" : L"");
         std::wstring more;
         if (st.battery)
-            more = L"\n\u7535\u6C60 " + std::to_wstring(st.batteryPercent) + L"%" + (st.charging ? L" \u00B7 \u5DF2\u63A5\u901A\u7535\u6E90" : L""); // 电池 N% · 已接通电源
+            more = Tr(L"\n电池 ") + std::to_wstring(st.batteryPercent) + L"%" + (st.charging ? Tr(L" · 已接通电源") : L"");
         if (st.audio)
-            more += L"\n\u97F3\u91CF " + (st.muted ? std::wstring(L"\u9759\u97F3") : std::to_wstring(st.volume) + L"%"); // 音量 N% / 静音
+            more += Tr(L"\n音量 ") + (st.muted ? std::wstring(Tr(L"静音")) : std::to_wstring(st.volume) + L"%");
         return net + more;
     }
     if (key == kMoreKey)
-        return L"\u53E6\u5916 " + std::to_wstring(hidden_.size()) + L" \u4E2A\u5E94\u7528"; // 另外 N 个应用
+        return LanguageIsEnglish() ? std::to_wstring(hidden_.size()) + L" more apps"
+                                   : L"另外 " + std::to_wstring(hidden_.size()) + L" 个应用";
     if (key == kClockKey) {
         wchar_t buf[128] = {};
         GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_LONGDATE, nullptr, nullptr, buf, 128, nullptr);
@@ -1530,7 +1533,7 @@ std::wstring Bar::TooltipText(const std::wstring& key) const
     }
     for (const auto& t : items_)
         if (t.key == key)
-            return t.windows.size() > 1 ? t.name + L" \u00B7 " + std::to_wstring(t.windows.size()) + L" \u4E2A\u7A97\u53E3" : t.name;
+            return t.windows.size() > 1 ? t.name + L" · " + std::to_wstring(t.windows.size()) + Tr(L" 个窗口") : t.name;
     return {};
 }
 

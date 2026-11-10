@@ -1,5 +1,7 @@
 #include "ui/desktop_widgets.h"
 
+#include "localization.h"
+
 #include "clock.h"
 #include "log.h"
 #include "motion.h"
@@ -274,6 +276,15 @@ void DesktopWidgets::SetMaterial(WidgetMaterial material)
             w->surface->SetGlassless(material_ == WidgetMaterial::Color);
             w->surface->Invalidate();
         }
+}
+
+void DesktopWidgets::ReloadLanguage()
+{
+    if (weather_)
+        weather_->Refresh();
+    for (auto& w : widgets_)
+        if (w->surface)
+            w->surface->Invalidate();
 }
 
 DesktopWidgets::~DesktopWidgets()
@@ -980,7 +991,7 @@ void DesktopWidgets::PickFolder(Widget& w)
     FILEOPENDIALOGOPTIONS o = 0;
     dialog->GetOptions(&o);
     dialog->SetOptions(o | FOS_PICKFOLDERS | FOS_FORCEFILESYSTEM);
-    dialog->SetTitle(L"选择照片文件夹");
+    dialog->SetTitle(Tr(L"选择照片文件夹"));
     Widget* wp = &w;
     winrt::com_ptr<IShellItem> item;
     PWSTR path = nullptr;
@@ -1438,22 +1449,22 @@ void DesktopWidgets::Menu(Widget& w)
     enum { kSmall = 1, kMedium, kLarge, kRemove, kFolder, kNextPhoto, kClearDone, kAdd };
     std::vector<MenuEntry> entries;
     auto size = [&](int id, WidgetSize s, const wchar_t* label) { entries.push_back({label, id, w.size == s, !WidgetSupports(w.kind, s)}); };
-    size(kSmall, WidgetSize::Small, L"小");
-    size(kMedium, WidgetSize::Medium, L"中");
-    size(kLarge, WidgetSize::Large, L"大");
+    size(kSmall, WidgetSize::Small, Tr(L"小"));
+    size(kMedium, WidgetSize::Medium, Tr(L"中"));
+    size(kLarge, WidgetSize::Large, Tr(L"大"));
     entries.push_back({});
     if (w.kind == WidgetKind::Photos) {
-        entries.push_back({L"选择照片文件夹…", kFolder});
-        entries.push_back({L"换一张", kNextPhoto});
+        entries.push_back({Tr(L"选择照片文件夹…"), kFolder});
+        entries.push_back({Tr(L"换一张"), kNextPhoto});
         entries.push_back({});
     }
     if (w.kind == WidgetKind::Reminders) {
         bool anyDone = std::any_of(w.content.items.begin(), w.content.items.end(), [](const Reminder& r) { return r.done; });
-        entries.push_back({L"清除已完成", kClearDone, false, !anyDone});
+        entries.push_back({Tr(L"清除已完成"), kClearDone, false, !anyDone});
         entries.push_back({});
     }
-    entries.push_back({L"移除小组件", kRemove});
-    entries.push_back({L"添加小组件…", kAdd});
+    entries.push_back({Tr(L"移除小组件"), kRemove});
+    entries.push_back({Tr(L"添加小组件…"), kAdd});
     POINT p;
     GetCursorPos(&p);
     Widget* target = &w;
