@@ -697,10 +697,10 @@ void ShowItemMenu(const std::wstring& key, POINT pt)
             break;
         case kCmdTerminate: {
             // Ending the processes loses what is not saved: asked once more, in place.
-            std::vector<MenuEntry> confirm = {{L"强制关闭“" + name + L"”？未保存的内容会丢失", 0, false, false, true},
+            std::vector<MenuEntry> confirm = {{TrFormat(L"强制关闭“%s”？未保存的内容会丢失", name.c_str()), 0, false, false, true},
                                               {L"", 0},
-                                              {L"强制关闭", kCmdTerminateConfirm},
-                                              {L"取消", 0}};
+                                              {Tr(L"强制关闭"), kCmdTerminateConfirm},
+                                              {Tr(L"取消"), 0}};
             g_app.menu->Open(std::move(confirm), pt, MenuPlace::AboveCentered, [key](int answer) {
                 if (answer == kCmdTerminateConfirm)
                     g_app.tasks->Terminate(key);

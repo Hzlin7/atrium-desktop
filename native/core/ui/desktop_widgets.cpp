@@ -1500,7 +1500,7 @@ void DesktopWidgets::Menu(Widget& w)
         entries.push_back({});
     }
     if (HasWorldClocks(w.kind, w.size)) {
-        entries.push_back({L"更改城市…", kCities});
+        entries.push_back({Tr(L"更改城市…"), kCities});
         entries.push_back({});
     }
     if (w.kind == WidgetKind::Reminders) {

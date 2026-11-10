@@ -349,10 +349,11 @@ internal static partial class WidgetFaces
         return (leap ? "闰" : "") + LunarMonths[Math.Clamp(m, 1, 12) - 1] + "月" + LunarDay(d);
     }
 
-    // ChineseCalendar::Line: "农历丙午年 九月廿三".
+    // ChineseCalendar::Line: "农历丙午年 九月廿三" ("Lunar 9/23" in English).
     internal static string LunarLine(DateTime t)
     {
         const string stems = "甲乙丙丁戊己庚辛壬癸", branches = "子丑寅卯辰巳午未申酉戌亥";
+        if (Loc.English) return LunarMonthDay(t);
         try
         {
             int n = Lunar.GetSexagenaryYear(t);

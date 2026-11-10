@@ -193,7 +193,12 @@ const Entry kEnglish[] = {
     {L"奥克兰", L"Auckland"},
     // desktop_widgets.cpp: the world clock's city menus.
     {L"更改哪个城市", L"Change which city"},
+    {L"更改城市…", L"Choose city…"},
     {L"把「%s」换成", L"Change “%s” to"},
+    // main.cpp: the app menu's forced close.
+    {L"强制关闭“%s”？未保存的内容会丢失", L"Force close “%s”? Unsaved content will be lost"},
+    {L"强制关闭", L"Force close"},
+    {L"取消", L"Cancel"},
     {L"%.0f GB 可用", L"%.0f GB free"},
     {L"处理器", L"CPU"},
     {L"内存", L"Memory"},
