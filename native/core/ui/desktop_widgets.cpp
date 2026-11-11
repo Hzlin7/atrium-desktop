@@ -52,7 +52,7 @@ struct KindName {
 const KindName kKinds[] = {{WidgetKind::Clock, L"clock"},     {WidgetKind::Calendar, L"calendar"},   {WidgetKind::Battery, L"battery"},
                            {WidgetKind::Digital, L"digital"}, {WidgetKind::System, L"system"},       {WidgetKind::Notes, L"notes"},
                            {WidgetKind::Reminders, L"reminders"}, {WidgetKind::Photos, L"photos"},  {WidgetKind::Weather, L"weather"},
-                           {WidgetKind::Bluetooth, L"bluetooth"}};
+                           {WidgetKind::Bluetooth, L"bluetooth"}, {WidgetKind::Network, L"network"}};
 
 const wchar_t* NameOf(WidgetKind k)
 {
@@ -262,6 +262,8 @@ DesktopWidgets::DesktopWidgets(HINSTANCE instance) : instance_(instance)
     weather_ = std::make_unique<WeatherSource>(host_, WM_WIDGET_WEATHER);
     world_.weather = weather_->Latest(); // the last one, until the first fetch
     bluetooth_ = std::make_unique<BluetoothBatteries>(host_, WM_WIDGET_BLUETOOTH);
+    network_ = std::make_unique<NetworkMonitor>();
+    world_.network = network_.get();
 }
 
 void DesktopWidgets::SetMaterial(WidgetMaterial material)
@@ -315,6 +317,7 @@ void DesktopWidgets::SetEnabled(bool on)
         KillTimer(host_, kSafetyTimer);
         weather_->SetActive(false);
         bluetooth_->SetActive(false);
+        network_->SetActive(false);
         KillTimer(host_, kCaretTimer);
         if (KillTimer(host_, kSaveTimer))
             Save(); // typing not saved yet
@@ -942,10 +945,15 @@ void DesktopWidgets::Tick()
     weather_->SetActive(std::any_of(widgets_.begin(), widgets_.end(), [](const auto& w) { return w->kind == WidgetKind::Weather; }));
     // The Bluetooth batteries are read while a Bluetooth widget is.
     bluetooth_->SetActive(std::any_of(widgets_.begin(), widgets_.end(), [](const auto& w) { return w->kind == WidgetKind::Bluetooth; }));
+    // The link's rates and the minute of them behind them, once a second while a network widget is up.
+    const bool watching = std::any_of(widgets_.begin(), widgets_.end(), [](const auto& w) { return w->kind == WidgetKind::Network; });
+    network_->SetActive(watching);
+    if (watching)
+        network_->Sample();
     for (auto& w : widgets_) {
         if (!w->surface)
             continue;
-        if (w->kind == WidgetKind::Clock || minute || (sample && w->kind == WidgetKind::System))
+        if (w->kind == WidgetKind::Clock || minute || (sample && w->kind == WidgetKind::System) || (watching && w->kind == WidgetKind::Network))
             w->surface->Invalidate();
         if (w->kind == WidgetKind::Photos && w->photoAt && now - w->photoAt > kPhotoMs)
             LoadPhoto(*w, true);
@@ -1217,6 +1225,9 @@ void DesktopWidgets::Activate(Widget& w)
         break;
     case WidgetKind::Bluetooth:
         open = L"ms-settings:bluetooth"; // Bluetooth & devices: each device with its battery
+        break;
+    case WidgetKind::Network:
+        open = L"ms-settings:network-status"; // 网络和 Internet: the adapters, their speeds and their usage
         break;
     case WidgetKind::Photos:
         if (w.content.photo.empty())

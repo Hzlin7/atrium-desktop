@@ -1232,7 +1232,7 @@ LRESULT CALLBACK HostProc(HWND h, UINT m, WPARAM w, LPARAM l)
         }
         break;
     case WM_ATRIUM_ADD_WIDGET:
-        return w <= WPARAM(WidgetKind::Bluetooth) && l >= 0 && l <= LPARAM(WidgetSize::Large) &&
+        return w <= WPARAM(WidgetKind::Network) && l >= 0 && l <= LPARAM(WidgetSize::Large) &&
                g_app.widgetsOn && g_app.widgets->Add(WidgetKind(w), WidgetSize(l)) ? 1 : 0;
     case WM_ATRIUM_SETTINGS:
         ApplySettings(g_app.server->Current());
