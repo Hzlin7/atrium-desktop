@@ -85,9 +85,6 @@ internal static class Loc
                 if (box.Header is string boxHeader) box.Header = T(boxHeader);
                 if (!string.IsNullOrEmpty(box.PlaceholderText)) box.PlaceholderText = T(box.PlaceholderText);
                 break;
-            case ContentControl content when content.Content is string text2 && !string.IsNullOrEmpty(text2):
-                content.Content = T(text2);
-                break;
             case ToggleTile tile:
                 tile.Title = T(tile.Title);
                 tile.Note = T(tile.Note);
@@ -95,6 +92,14 @@ internal static class Loc
                 break;
             case NavLabel nav:
                 nav.Text = T(nav.Text);
+                break;
+            case ContentControl content when content.Content is string text2 && !string.IsNullOrEmpty(text2):
+                content.Content = T(text2);
+                break;
+            // A RadioButton's card (the presets) is not in the visual tree until
+            // its template is applied: translate the content object directly.
+            case ContentControl content2 when content2.Content is DependencyObject child:
+                Localize(child);
                 break;
             case MenuFlyoutItem item:
                 item.Text = T(item.Text);

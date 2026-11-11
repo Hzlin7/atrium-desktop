@@ -238,6 +238,16 @@ public sealed partial class MainWindow : Window
         if (_sides[index] is { } pageSide) Loc.Localize(pageSide);
         Loc.Localize(InspectorStack);
         Loc.Localize(FoldedInspector);
+        // A page first shown after the language changed has its RadioButton
+        // contents created by the first layout; translate once more after it.
+        int shownIndex = index;
+        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
+        {
+            if (_updatesClosed) return;
+            Loc.Localize(_mains[shownIndex]);
+            if (_sides[shownIndex] is { } shownSide) Loc.Localize(shownSide);
+            Loc.Localize(InspectorStack);
+        });
         CenterScroll.ChangeView(null, 0, null, true);
         InspectorScroll.ChangeView(null, 0, null, true);
         if (index < 3) UpdateHero();
