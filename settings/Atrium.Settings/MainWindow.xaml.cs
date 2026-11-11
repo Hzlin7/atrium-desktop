@@ -171,7 +171,7 @@ public sealed partial class MainWindow : Window
         StartupSwitch.IsEnabled = !CoreClient.Development;
         if (CoreClient.Development) ToolTipService.SetToolTip(StartupSwitch, Loc.T("开发构建不修改 Windows 开机启动项。"));
         var v = typeof(MainWindow).Assembly.GetName().Version;
-        VersionText.Text = Loc.T("版本 ") + (v?.ToString(3) ?? "1.0.0");
+        VersionText.Text = Loc.F("版本 {0}", v?.ToString(3) ?? "1.0.0");
         ShowStatus(false);
         // `--page widgets` (the widgets' menu): open on that page.
         var args = Environment.GetCommandLineArgs();
@@ -182,6 +182,20 @@ public sealed partial class MainWindow : Window
         SelectPage(page);
         _ = ConnectAndLoadAsync();
         _ = CheckForUpdatesAsync(); // once per settings window; no resident polling
+    }
+
+    // A language switch builds the new settings window while this one is
+    // still open; release the core pipe first so the new window can connect.
+    internal void ReleaseForReload()
+    {
+        _updatesClosed = true;
+        _updateCheck?.Cancel();
+        _downloadTimer?.Stop();
+        _settingsWatcher?.Dispose();
+        _settingsWatcher = null;
+        _widgetWatcher?.Dispose();
+        _widgetWatcher = null;
+        _client.Dispose();
     }
 
     // ---- Pages ----
@@ -239,16 +253,6 @@ public sealed partial class MainWindow : Window
         if (_sides[index] is { } pageSide) Loc.Localize(pageSide);
         Loc.Localize(InspectorStack);
         Loc.Localize(FoldedInspector);
-        // A page first shown after the language changed has its RadioButton
-        // contents created by the first layout; translate once more after it.
-        int shownIndex = index;
-        DispatcherQueue.TryEnqueue(Microsoft.UI.Dispatching.DispatcherQueuePriority.Low, () =>
-        {
-            if (_updatesClosed) return;
-            Loc.Localize(_mains[shownIndex]);
-            if (_sides[shownIndex] is { } shownSide) Loc.Localize(shownSide);
-            Loc.Localize(InspectorStack);
-        });
         CenterScroll.ChangeView(null, 0, null, true);
         InspectorScroll.ChangeView(null, 0, null, true);
         if (index < 3) UpdateHero();
@@ -376,7 +380,7 @@ public sealed partial class MainWindow : Window
                 Content = new Grid { Width = 28, Height = 28, Children = { dot, ring } },
                 Style = (Style)Application.Current.Resources["IconButtonStyle"], Width = 32, Height = 32, CornerRadius = new CornerRadius(16),
             };
-            AutomationProperties.SetName(button, Loc.T("染色 ") + Loc.T(name));
+            AutomationProperties.SetName(button, Loc.F("染色 {0}", Loc.T(name)));
             ToolTipService.SetToolTip(button, Loc.T(name));
             var captured = rgb;
             button.Click += (_, _) => SetTint(captured);
@@ -592,12 +596,22 @@ public sealed partial class MainWindow : Window
         if (_updatesClosed) return;
         _saved = saved;
         _current = current;
+        // A language change re-created the window: restore the edits that
+        // arrived while the save was in flight, then preview them.
+        var pending = App.TakePendingState();
+        bool hasPending = pending.Current != null && pending.Saved != null;
+        if (hasPending)
+        {
+            _saved = pending.Saved!;
+            _current = pending.Current!;
+        }
         _coreChanging = false;
         WatchCore();
         WatchSettingsFile();
         ShowStatus(_client.Connected);
         LoadIntoControls();
         UpdateButtons();
+        if (hasPending) SchedulePreview();
         if (Content is FrameworkElement { IsLoaded: true }) App.SignalStartupReady(_client.Connected && _client.StateConfirmed);
         else if (Content is FrameworkElement root) root.Loaded += (_, _) => App.SignalStartupReady(_client.Connected && _client.StateConfirmed);
         if (_reconnectTimer == null && !_updatesClosed)
@@ -1215,11 +1229,12 @@ public sealed partial class MainWindow : Window
             return false;
         }
         _saved = sent;
-        // The settings window itself is XAML in Chinese: re-create it in the new language.
-        if (languageChanged && _current.SameAs(_saved))
+        // The settings window's XAML is Chinese source text: re-create it in
+        // the new language, carrying edits made while the save was in flight.
+        if (languageChanged)
         {
             Loc.Apply(sent.Language);
-            App.ReloadWindow(7);
+            App.ReloadWindow(7, _current, _saved);
             return true;
         }
         Status.IsOpen = false;

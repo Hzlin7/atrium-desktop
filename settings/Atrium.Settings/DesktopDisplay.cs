@@ -49,7 +49,8 @@ internal sealed record DesktopDisplay(string Id, string Name, string Details, bo
             bool primary = (info.Flags & 1) != 0;
             int w = info.Bounds.Right - info.Bounds.Left, h = info.Bounds.Bottom - info.Bounds.Top;
             string name = $"{info.Device.Replace(@"\\.\", "")} · {(found ? device.DeviceString : Loc.T("未知显示器"))}";
-            displays.Add(new(id, name, Loc.F("{0} × {1} · {2:P0} 缩放", w, h, scale) + (primary ? Loc.T(" · 主显示器") : ""), primary,
+            displays.Add(new(id, name, primary ? Loc.F("{0} × {1} · {2:P0} 缩放 · 主显示器", w, h, scale)
+                                                : Loc.F("{0} × {1} · {2:P0} 缩放", w, h, scale), primary,
                 info.Bounds.Left, info.Bounds.Top, w, h, info.Work.Right - info.Work.Left, info.Work.Bottom - info.Work.Top, scale));
             return true;
         }, IntPtr.Zero);

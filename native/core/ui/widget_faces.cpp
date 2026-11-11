@@ -94,14 +94,9 @@ SYSTEMTIME CityTime(const std::wstring& name, const SYSTEMTIME& now, std::wstrin
     // Minutes() floors the seconds: a quarter-hour zone may come out a minute short.
     const int64_t quarters = (minutes + (minutes >= 0 ? 7 : -7)) / 15;
     int dayDiff = int((Minutes(ct) / 1440) - (Minutes(now) / 1440));
-    when = dayDiff > 0 ? Tr(L"明天") : dayDiff < 0 ? Tr(L"昨天") : Tr(L"今天");
-    std::wstring hours = std::to_wstring(quarters / 4);
-    if (quarters % 4) {
-        wchar_t b[16];
-        swprintf_s(b, L"%g", double(quarters) / 4);
-        hours = b;
-    }
-    when += (quarters >= 0 ? L" +" : L" ") + hours + Tr(L"小时");
+    std::wstring offset = (quarters >= 0 ? L"+" : L"") + hours;
+    when = dayDiff > 0 ? TrFormat(L"明天 %s小时", offset.c_str())
+                       : dayDiff < 0 ? TrFormat(L"昨天 %s小时", offset.c_str()) : TrFormat(L"今天 %s小时", offset.c_str());
     return ct;
 }
 
@@ -735,7 +730,7 @@ void PaintWeather(Canvas& c, WidgetSize size, const WidgetWorld& world, const Pa
         return;
     }
     c.Text(Degrees(w.temp), D2D1::RectF(pad - 2, 30, W / 2 + 40, 82), 44, text, DWRITE_FONT_WEIGHT_LIGHT);
-    const std::wstring range = Tr(L"最高 ") + Degrees(w.hi) + Tr(L"  最低 ") + Degrees(w.lo);
+    const std::wstring range = TrFormat(L"最高 %s  最低 %s", Degrees(w.hi).c_str(), Degrees(w.lo).c_str());
     if (size == WidgetSize::Small) {
         WeatherIcon(c, w.code, w.day, pad + 11, H - 62, 22, 0, ink);
         c.Text(WeatherCondition(w.code), D2D1::RectF(pad, H - 48, W - pad, H - 30), 13, text, DWRITE_FONT_WEIGHT_SEMI_BOLD);

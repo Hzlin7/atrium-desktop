@@ -119,12 +119,13 @@ public sealed partial class MainWindow
         button.TranslationTransition = new Vector3Transition { Duration = TimeSpan.FromMilliseconds(180) };
         button.PointerEntered += (_, _) => button.Translation = new Vector3(0, -2, 0);
         button.PointerExited += (_, _) => button.Translation = Vector3.Zero;
-        AutomationProperties.SetName(button, Loc.T("添加 ") + c.Name + (c.Size == "small" ? Loc.T("（小）") : c.Size == "medium" ? Loc.T("（中）") : Loc.T("（大）")));
+        AutomationProperties.SetName(button, c.Size == "small" ? Loc.F("添加 {0}（小）", c.Name)
+            : c.Size == "medium" ? Loc.F("添加 {0}（中）", c.Name) : Loc.F("添加 {0}（大）", c.Name));
         ToolTipService.SetToolTip(button, c.Note);
         button.Click += async (_, _) =>
         {
             var error = await _client.AddWidgetAsync(c.Kind, c.Size);
-            WidgetHint.Text = error == null ? Loc.F("已把“{0}”放到桌面上。", c.Name) : error.Contains("room") ? Loc.T("桌面上没有空位了：先移除或缩小一个小组件。") : Loc.T("没有添加：") + error;
+            WidgetHint.Text = error == null ? Loc.F("已把“{0}”放到桌面上。", c.Name) : error.Contains("room") ? Loc.T("桌面上没有空位了：先移除或缩小一个小组件。") : Loc.F("没有添加：{0}", error);
         };
         return button;
     }

@@ -217,7 +217,7 @@ void UpdateChecker::NotifyPrepared(Notifications& notifications)
         notice.externalId = 1; // one current update card, independent of ordinary notices
         notice.app = L"Atrium";
         notice.title = Tr(L"更新已准备好");
-        notice.body = tag + Tr(L" 已下载完成，可在关于中选择重启更新。");
+        notice.body = TrFormat(L"%s 已下载完成，可在关于中选择重启更新。", tag.c_str());
         notice.action = L"settings:updates";
         notifications.Post(std::move(notice), silent);
         // This runs synchronously on the UI thread: the card is now accepted,

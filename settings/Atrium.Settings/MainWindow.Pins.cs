@@ -23,10 +23,10 @@ public sealed class PinVm : INotifyPropertyChanged
         _owner = owner;
         Pin = pin;
         Title = MainWindow.PinTitle(pin);
-        UpName = Loc.T("上移 ") + Title;
-        DownName = Loc.T("下移 ") + Title;
-        RemoveName = Loc.T("移除 ") + Title;
-        LaunchName = Loc.T("启动方式 ") + Title;
+        UpName = Loc.F("上移 {0}", Title);
+        DownName = Loc.F("下移 {0}", Title);
+        RemoveName = Loc.F("移除 {0}", Title);
+        LaunchName = Loc.F("启动方式 {0}", Title);
     }
 
     internal PinnedApp Pin { get; private set; }

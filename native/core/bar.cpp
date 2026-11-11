@@ -1544,23 +1544,27 @@ std::wstring Bar::TooltipText(const std::wstring& key) const
     if (key == kStartKey)
         return Tr(L"开始");
     if (key == kNotifyKey)
-        return unread_ ? std::to_wstring(unread_) + Tr(L" 条未读通知") : Tr(L"通知");
+        return unread_ ? TrFormat(L"%d 条未读通知", int(unread_)) : Tr(L"通知");
     if (key == kTrayKey)
         return Tr(L"托盘");
     if (key == kStatusKey) {
         const SystemStatus& st = status_;
-        std::wstring net = !st.connected ? Tr(L"未连接网络")
-                                         : (st.wifi ? L"Wi-Fi " : L"") + st.network + (st.wifi ? Tr(L" · 信号 ") + std::to_wstring(st.signal) + L"%" : L"");
+        std::wstring net;
+        if (!st.connected)
+            net = Tr(L"未连接网络");
+        else if (st.wifi)
+            net = TrFormat(L"Wi-Fi %s · 信号 %d%%", st.network.c_str(), st.signal);
+        else
+            net = st.network;
         std::wstring more;
         if (st.battery)
-            more = Tr(L"\n电池 ") + std::to_wstring(st.batteryPercent) + L"%" + (st.charging ? Tr(L" · 已接通电源") : L"");
+            more = st.charging ? TrFormat(L"\n电池 %d%% · 已接通电源", st.batteryPercent) : TrFormat(L"\n电池 %d%%", st.batteryPercent);
         if (st.audio)
-            more += Tr(L"\n音量 ") + (st.muted ? std::wstring(Tr(L"静音")) : std::to_wstring(st.volume) + L"%");
+            more += st.muted ? Tr(L"\n静音") : TrFormat(L"\n音量 %d%%", st.volume);
         return net + more;
     }
     if (key == kMoreKey)
-        return LanguageIsEnglish() ? std::to_wstring(hidden_.size()) + L" more apps"
-                                   : L"另外 " + std::to_wstring(hidden_.size()) + L" 个应用";
+        return TrFormat(L"另外 %d 个应用", int(hidden_.size()));
     if (key == kClockKey) {
         wchar_t buf[128] = {};
         GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_LONGDATE, nullptr, nullptr, buf, 128, nullptr);
@@ -1568,7 +1572,7 @@ std::wstring Bar::TooltipText(const std::wstring& key) const
     }
     for (const auto& t : items_)
         if (t.key == key)
-            return t.windows.size() > 1 ? t.name + L" · " + std::to_wstring(t.windows.size()) + Tr(L" 个窗口") : t.name;
+            return t.windows.size() > 1 ? TrFormat(L"%s · %d 个窗口", t.name.c_str(), int(t.windows.size())) : t.name;
     return {};
 }
 

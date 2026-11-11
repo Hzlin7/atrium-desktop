@@ -1019,7 +1019,7 @@ void StartMenu::PaintRows(Canvas& c, const Theme& t, const std::vector<Row>& row
                 DrawIcon(c, f.apps[k].id, px, D2D1::RectF(x, yy, x + m, yy + m), 3);
             }
             name = f.name;
-            note = std::to_wstring(f.apps.size()) + Tr(L" 个应用");
+            note = TrFormat(L"%d 个应用", int(f.apps.size()));
         } else {
             DrawIcon(c, row.app.id, rowPx, ir, 7);
             name = row.app.name;

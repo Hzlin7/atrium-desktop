@@ -89,7 +89,11 @@ public sealed partial class MainWindow
         Canvas.SetLeft(backCard, back.X - pad); Canvas.SetTop(backCard, back.Y - pad);
         Canvas.SetLeft(frontCard, front.X - pad); Canvas.SetTop(frontCard, front.Y - pad);
         _notifyEntrancePending |= animate;
-        NotifyCaption.Text = (topRight ? Loc.T("主屏右上角 · 已有通知向下让位 · ") : Loc.T("跟随任务栏 · ")) + Loc.F("{0:0} 秒后收起", s.NotifyTimeout) + (s.NotifyHideBody ? Loc.T(" · 正文已隐藏") : "");
+        string caption = topRight
+            ? s.NotifyHideBody ? "主屏右上角 · 已有通知向下让位 · {0:0} 秒后收起 · 正文已隐藏"
+                               : "主屏右上角 · 已有通知向下让位 · {0:0} 秒后收起"
+            : s.NotifyHideBody ? "跟随任务栏 · {0:0} 秒后收起 · 正文已隐藏" : "跟随任务栏 · {0:0} 秒后收起";
+        NotifyCaption.Text = Loc.F(caption, s.NotifyTimeout);
 
         // Their glass: rendered over the picture where they rest; each card carries its own piece.
         PostTiles(NotifyCards, W, H, 1, new[] { back, front }, null, f =>

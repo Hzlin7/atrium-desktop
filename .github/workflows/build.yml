@@ -16,6 +16,9 @@ jobs:
       - uses: actions/setup-dotnet@v6
         with:
           global-json-file: global.json
+      - name: Check localization tables
+        shell: pwsh
+        run: ./tools/check-localization.ps1
       - name: Build native, settings and the portable package
         shell: pwsh
         run: ./tools/build.ps1 -Zip

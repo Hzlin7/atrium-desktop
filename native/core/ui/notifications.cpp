@@ -54,8 +54,8 @@ std::wstring Ago(ULONGLONG t)
     if (s < 60)
         return Tr(L"刚刚"); // 刚刚
     if (s < 3600)
-        return std::to_wstring(s / 60) + Tr(L" 分钟前"); // N 分钟前
-    return std::to_wstring(s / 3600) + Tr(L" 小时前"); // N 小时前
+        return TrFormat(L"%d 分钟前", int(s / 60));
+    return TrFormat(L"%d 小时前", int(s / 3600));
 }
 
 
@@ -655,7 +655,7 @@ void Notifications::PaintCard(Canvas& c, const Notice& n, D2D1_RECT_F r, int ind
     float nameX = tx + (n.unread ? 12 : 0);
     std::wstring app = n.app.empty() ? L"Atrium" : n.app;
     if (n.count > 1)
-        app += L"  ·  " + std::to_wstring(n.count) + Tr(L" 条");
+        app = TrFormat(L"%s  ·  %d 条", app.c_str(), n.count);
     c.Text(app, D2D1::RectF(nameX, ty, x + w - 170, ty + 16), 12, t.subtext, DWRITE_FONT_WEIGHT_SEMI_BOLD);
     std::wstring when = Ago(n.time);
     if (v.stacked && v.count > 1 && index == v.front) // which card of the stack is in front (the wheel turns it)
@@ -846,7 +846,7 @@ void Notifications::Paint(Mode mode, Canvas& c)
         if (c.panel)
             c.Fill(pill, pr, t.panel);
         size_t live = shown.size() - std::min(shown.size(), leaving_.size());
-        std::wstring label = live ? Tr(L"通知  ·  ") + std::to_wstring(live) : Tr(L"没有新通知");
+        std::wstring label = live ? TrFormat(L"通知  ·  %d", int(live)) : Tr(L"没有新通知");
         c.Text(label, D2D1::RectF(pill.left + 20, pill.top, w / 2 + 40, pill.bottom), 13.5f, live ? t.text : t.subtext,
                live ? DWRITE_FONT_WEIGHT_SEMI_BOLD : DWRITE_FONT_WEIGHT_NORMAL);
         float x = pill.right - 6;

@@ -105,8 +105,9 @@ internal static partial class WidgetFaces
         catch (Exception e) when (e is TimeZoneNotFoundException or InvalidTimeZoneException) { }
         double hours = Math.Round((t - now).TotalMinutes / 15) / 4;
         int dd = t.Date.CompareTo(now.Date);
-        return (t, Loc.T(dd > 0 ? "明天" : dd < 0 ? "昨天" : "今天") + (hours >= 0 ? " +" : " ") +
-                   hours.ToString("0.##", CultureInfo.InvariantCulture) + Loc.T("小时"));
+        string offset = (hours >= 0 ? "+" : "") + hours.ToString("0.##", CultureInfo.InvariantCulture);
+        string template = dd > 0 ? "明天 {0}小时" : dd < 0 ? "昨天 {0}小时" : "今天 {0}小时";
+        return (t, Loc.F(template, offset));
     }
 
     public static FrameworkElement Face(string kind, string size, bool darkInk, Brush? photo = null, string material = "glass", IReadOnlyList<string>? cities = null)
@@ -414,7 +415,7 @@ internal static partial class WidgetFaces
         Text(c, Loc.T(WeekLong[Weekday(now)]), Pad + 2, Pad, Pad + leftW, Pad + 20, 14, p.Blue, 2, 0, p);
         Text(c, now.Day.ToString(), Pad, Pad + 16, Pad + leftW, Pad + 80, 54, p.Text, 0, 0, p);
         string todayLabel = DayLabel(now, out bool fest);
-        Text(c, Loc.English ? LunarMonthDay(now) : Loc.T("农历") + LunarMonthDay(now), Pad + 2, h - Pad - 40, Pad + leftW, h - Pad - 20, 12.5, p.Text, 2, 0, p);
+        Text(c, Loc.English ? LunarMonthDay(now) : Loc.F("农历{0}", LunarMonthDay(now)), Pad + 2, h - Pad - 40, Pad + leftW, h - Pad - 20, 12.5, p.Text, 2, 0, p);
         Text(c, fest ? todayLabel : (Loc.English ? $"{now.Year} {Loc.T(Months[now.Month - 1])}" : $"{now.Year}年{Loc.T(Months[now.Month - 1])}"),
              Pad + 2, h - Pad - 20, Pad + leftW, h - Pad, 12, fest ? p.Blue : p.Sub, 0, 0, p);
         if (size == "small") return;

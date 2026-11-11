@@ -317,7 +317,7 @@ void TrayPanel::Paint(Canvas& c)
             label = private_ ? Tr(L"托盘图标") : TrayModel::Title(icons_[i].tip);
     }
     if (label.empty())
-        label = icons_.empty() ? Tr(L"托盘") : std::to_wstring(icons_.size()) + Tr(L" 个图标");
+        label = icons_.empty() ? Tr(L"托盘") : TrFormat(L"%d 个图标", int(icons_.size()));
     std::wstring sys = Tr(L"系统托盘");
     float bw = c.TextWidth(sys, 11.5f) + 20;
     D2D1_RECT_F b = D2D1::RectF(w - m - bw, footTop, w - m, footTop + kFooterH);

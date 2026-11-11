@@ -503,7 +503,7 @@ void ControlCenter::PaintMain(Canvas& c, const Theme& t)
     row(0, L"wifi", L"\uE701", L"Wi-Fi", wifiSub, wifiOn, !radiosRead_ || radios_.wifiPresent);
     int connected = int(std::count_if(devices_.begin(), devices_.end(), [](const BluetoothDevice& d) { return d.connected; }));
     std::wstring btSub = !radiosRead_ ? L"…" : !radios_.btPresent ? Tr(L"不可用") : !radios_.btOn ? Tr(L"已关闭")
-                         : connected ? std::to_wstring(connected) + Tr(L" 台设备已连接") : Tr(L"已打开");
+                         : connected ? TrFormat(L"%d 台设备已连接", connected) : Tr(L"已打开");
     row(1, L"bt", L"\uE702", Tr(L"蓝牙"), btSub, radios_.btOn, radios_.btPresent);
 
     // Battery: a small ring, the level and the state.
@@ -521,8 +521,8 @@ void ControlCenter::PaintMain(Canvas& c, const Theme& t)
                 c.Glyph(L"\uE945", D2D1::RectF(cx - 12, cy - 12, cx + 12, cy + 12), 11, t.text);
             std::wstring state = status_.charging ? (pct >= 100 ? Tr(L"已充满") : Tr(L"正在充电"))
                                  : status_.batteryMinutes >= 0
-                                     ? Tr(L"剩余 ") + (status_.batteryMinutes >= 60 ? std::to_wstring(status_.batteryMinutes / 60) + Tr(L" 小时")
-                                                                                     : std::to_wstring(status_.batteryMinutes) + Tr(L" 分钟"))
+                                     ? (status_.batteryMinutes >= 60 ? TrFormat(L"剩余 %d 小时", status_.batteryMinutes / 60)
+                                                                     : TrFormat(L"剩余 %d 分钟", status_.batteryMinutes))
                                      : std::wstring(Tr(L"使用电池"));
             c.Text(std::to_wstring(pct) + L"%", D2D1::RectF(cx + 24, cy - 18, batt.right - 8, cy + 1), 15, t.text, DWRITE_FONT_WEIGHT_SEMI_BOLD);
             c.Text(state, D2D1::RectF(cx + 24, cy + 1, batt.right - 8, cy + 18), 11.5f, t.subtext);
@@ -732,7 +732,7 @@ void ControlCenter::PaintBluetooth(Canvas& c, const Theme& t, D2D1_RECT_F card)
         c.halo = false;
         c.Glyph(L"\uE702", disc, 12, d.connected ? D2D1::ColorF(1, 1, 1, 0.98f) : t.text);
         c.halo = halo;
-        std::wstring name = private_ ? Tr(L"蓝牙设备 ") + std::to_wstring(i + 1) : d.name;
+        std::wstring name = private_ ? TrFormat(L"蓝牙设备 %d", i + 1) : d.name;
         c.Text(name, D2D1::RectF(disc.right + 10, row.top, row.right - 80, row.bottom), 13.5f, t.text,
                d.connected ? DWRITE_FONT_WEIGHT_SEMI_BOLD : DWRITE_FONT_WEIGHT_NORMAL);
         c.Text(d.connected ? Tr(L"已连接") : Tr(L"未连接"), D2D1::RectF(row.right - 80, row.top, row.right - 12, row.bottom), 12,
@@ -919,7 +919,7 @@ void ControlCenter::PaintCast(Canvas& c, const Theme& t, D2D1_RECT_F card)
         c.halo = false;
         c.Glyph(L"\uE7F4", disc, 12, on ? D2D1::ColorF(1, 1, 1, 0.98f) : t.text);
         c.halo = halo;
-        std::wstring name = private_ ? Tr(L"无线显示器 ") + std::to_wstring(i + 1) : d.name;
+        std::wstring name = private_ ? TrFormat(L"无线显示器 %d", i + 1) : d.name;
         c.Text(name, D2D1::RectF(disc.right + 10, row.top, row.right - 96, row.bottom), 13.5f, t.text,
                on ? DWRITE_FONT_WEIGHT_SEMI_BOLD : DWRITE_FONT_WEIGHT_NORMAL);
         float r = row.right - 12;
