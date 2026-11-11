@@ -182,10 +182,28 @@ float GlassLuma(const Settings& s, float backdrop)
     return backdrop * (1 - tm) + tintLuma * tm;
 }
 
-void ClockStrings(std::wstring& time, std::wstring& date)
+// The bar's time and date, in the system's own formats. `seconds` asks for the
+// long time format (which carries seconds); a locale whose long time has none
+// gets them added after the minutes, so the switch always shows a difference.
+void ClockStrings(std::wstring& time, std::wstring& date, bool seconds)
 {
     wchar_t t[64] = {}, d[64] = {};
-    GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, TIME_NOSECONDS, nullptr, nullptr, t, 64);
+    GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, seconds ? 0 : TIME_NOSECONDS, nullptr, nullptr, t, 64);
+    if (seconds) {
+        wchar_t plain[64] = {};
+        GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, TIME_NOSECONDS, nullptr, nullptr, plain, 64);
+        if (std::wstring(t) == plain) {
+            wchar_t pattern[64] = {};
+            if (GetLocaleInfoEx(LOCALE_NAME_USER_DEFAULT, LOCALE_STIMEFORMAT, pattern, ARRAYSIZE(pattern)) > 0) {
+                std::wstring withSeconds = pattern;
+                const size_t minute = withSeconds.rfind(L'm');
+                if (minute != std::wstring::npos) {
+                    withSeconds.insert(minute + 1, L":ss");
+                    GetTimeFormatEx(LOCALE_NAME_USER_DEFAULT, 0, nullptr, withSeconds.c_str(), t, ARRAYSIZE(t));
+                }
+            }
+        }
+    }
     GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_SHORTDATE, nullptr, nullptr, d, 64, nullptr);
     time = t;
     date = d;
@@ -896,7 +914,7 @@ void Bar::Relayout()
     int clockW = 0;
     if (showClock) {
         std::wstring time, date;
-        ClockStrings(time, date);
+        ClockStrings(time, date, st.showClockSeconds);
         float w = std::max(MeasureUiText(dwrite_.get(), WidestDigits(time), timePx, DWRITE_FONT_WEIGHT_SEMI_BOLD),
                            MeasureUiText(dwrite_.get(), WidestDigits(date), datePx, DWRITE_FONT_WEIGHT_NORMAL));
         clockW = int(std::ceil(w)) + Px(22, s);
@@ -2255,7 +2273,7 @@ bool Bar::RenderSession()
 
         std::wstring time, date;
         if (snap.settings.showClock)
-            ClockStrings(time, date);
+            ClockStrings(time, date, snap.settings.showClockSeconds);
         std::wstring textKey = time + L"|" + date;
         const double nowMs = ClockMs();
         animating = painter.Animate(snap.scene, nowMs);

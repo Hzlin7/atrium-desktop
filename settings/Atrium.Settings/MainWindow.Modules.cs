@@ -561,7 +561,7 @@ public sealed partial class MainWindow
         protected void SetBarClock()
         {
             var clock = DateTime.Now;
-            Face.SetClock(clock.ToString("H:mm"), clock.ToString("yyyy/M/d"));
+            Face.SetClock(clock.ToString(M._current.ShowClockSeconds ? "H:mm:ss" : "H:mm"), clock.ToString("yyyy/M/d"));
         }
 
         // The bar between two layouts: everything glides; an entry that comes or goes does at once.

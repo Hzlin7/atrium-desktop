@@ -718,6 +718,8 @@ public sealed partial class MainWindow : Window
         (_current.Preset switch { "liquid" => PresetLiquid, "frosted" => PresetFrosted, _ => PresetCustom }).IsChecked = true;
         (Photo.Selected switch { "wallpaper" => BgWallpaper, "paper" => BgPaper, "geometry" => BgGeometry, "layers" => BgLayers, _ => BgSpecimen }).IsChecked = true;
         ClockSwitch.IsOn = _current.ShowClock;
+        ClockSecondsSwitch.IsOn = _current.ShowClockSeconds;
+        UpdateClockOptions();
         TraySwitch.IsOn = _current.ShowTray;
         StartTraySwitch.IsOn = _current.StartTray;
         StartStatusSwitch.IsOn = _current.StartStatus;
@@ -806,6 +808,21 @@ public sealed partial class MainWindow : Window
     {
         if (_loading) return;
         _current.ShowClock = ClockSwitch.IsOn;
+        UpdateClockOptions();
+        Changed();
+    }
+
+    // Seconds only matter while the clock itself is shown.
+    private void UpdateClockOptions()
+    {
+        ClockSecondsSwitch.IsEnabled = _current.ShowClock;
+        ClockSecondsSwitch.Opacity = _current.ShowClock ? 1 : 0.45;
+    }
+
+    private void OnClockSecondsToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _current.ShowClockSeconds = ClockSecondsSwitch.IsOn;
         Changed();
     }
 

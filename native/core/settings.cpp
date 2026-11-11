@@ -91,6 +91,7 @@ std::wstring Settings::ToJson() const
     if (!startSize.empty())
         o.SetNamedValue(L"startSize", json::JsonValue::CreateStringValue(startSize));
     o.SetNamedValue(L"showClock", json::JsonValue::CreateBooleanValue(showClock));
+    o.SetNamedValue(L"showClockSeconds", json::JsonValue::CreateBooleanValue(showClockSeconds));
     o.SetNamedValue(L"showTray", json::JsonValue::CreateBooleanValue(showTray));
     o.SetNamedValue(L"showStatus", json::JsonValue::CreateBooleanValue(showStatus));
     o.SetNamedValue(L"showNotifications", json::JsonValue::CreateBooleanValue(showNotifications));
@@ -182,6 +183,7 @@ bool Settings::FromJson(const std::wstring& text, const Settings& base, Settings
     if (o.HasKey(L"startSize") && o.GetNamedValue(L"startSize").ValueType() == json::JsonValueType::String)
         s.startSize = std::wstring(o.GetNamedString(L"startSize"));
     flag(L"showClock", s.showClock);
+    flag(L"showClockSeconds", s.showClockSeconds);
     flag(L"showTray", s.showTray);
     flag(L"showStatus", s.showStatus);
     flag(L"showNotifications", s.showNotifications);

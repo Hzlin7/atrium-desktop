@@ -40,6 +40,7 @@ struct Settings {
     bool hoverRise = false;           // glass rises with the pointer's magnification wave
     bool autoWidth = true;           // shrink to the content
     bool showClock = true;
+    bool showClockSeconds = false;    // seconds after the minutes, in the system's long time format
     bool showTray = true;
     bool showStatus = true;
     bool showNotifications = true;
