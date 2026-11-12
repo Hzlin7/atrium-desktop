@@ -99,4 +99,4 @@ target_include_directories(atrium_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(atrium_core PRIVATE
     windowsapp d3d11 dxgi dcomp d2d1 dwrite shcore user32 gdi32 shell32 ole32
     dwmapi version propsys shlwapi oleaut32 uuid imm32 powrprof wlanapi windowscodecs winhttp setupapi taskschd
-    iphlpapi)
+    iphlpapi advapi32)

@@ -17,3 +17,8 @@ add_executable(app_processes_tests
 target_include_directories(app_processes_tests PRIVATE ../core)
 target_compile_definitions(app_processes_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 add_test(NAME app_processes COMMAND app_processes_tests)
+
+add_executable(quiet_profile_tests quiet_profile.cpp)
+target_include_directories(quiet_profile_tests PRIVATE ../core)
+target_compile_definitions(quiet_profile_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
+add_test(NAME quiet_profile COMMAND quiet_profile_tests)
