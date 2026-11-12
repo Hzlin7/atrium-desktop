@@ -94,6 +94,12 @@ SYSTEMTIME CityTime(const std::wstring& name, const SYSTEMTIME& now, std::wstrin
     // Minutes() floors the seconds: a quarter-hour zone may come out a minute short.
     const int64_t quarters = (minutes + (minutes >= 0 ? 7 : -7)) / 15;
     int dayDiff = int((Minutes(ct) / 1440) - (Minutes(now) / 1440));
+    std::wstring hours = std::to_wstring(quarters / 4);
+    if (quarters % 4) {
+        wchar_t b[16];
+        swprintf_s(b, L"%g", double(quarters) / 4);
+        hours = b;
+    }
     std::wstring offset = (quarters >= 0 ? L"+" : L"") + hours;
     when = dayDiff > 0 ? TrFormat(L"明天 %s小时", offset.c_str())
                        : dayDiff < 0 ? TrFormat(L"昨天 %s小时", offset.c_str()) : TrFormat(L"今天 %s小时", offset.c_str());
