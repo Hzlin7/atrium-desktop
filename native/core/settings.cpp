@@ -17,6 +17,7 @@
 #include <cwctype>
 #include <fstream>
 #include <sstream>
+#include <vector>
 
 namespace json = winrt::Windows::Data::Json;
 
@@ -315,12 +316,18 @@ bool WriteTextFile(const std::wstring& path, const std::wstring& text)
     int n = WideCharToMultiByte(CP_UTF8, 0, text.data(), int(text.size()), nullptr, 0, nullptr, nullptr);
     std::string bytes(size_t(n), '\0');
     WideCharToMultiByte(CP_UTF8, 0, text.data(), int(text.size()), bytes.data(), n, nullptr, nullptr);
-    {
-        std::ofstream out(tmp, std::ios::binary | std::ios::trunc);
-        out << bytes;
-        out.flush();
-        if (!out)
-            return false;
+    // Win32 rather than a stream: a failure leaves its reason in GetLastError.
+    HANDLE file = CreateFileW(tmp.c_str(), GENERIC_WRITE, 0, nullptr, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+    if (file == INVALID_HANDLE_VALUE)
+        return false;
+    DWORD written = 0;
+    const bool ok = WriteFile(file, bytes.data(), DWORD(bytes.size()), &written, nullptr) && written == bytes.size() && FlushFileBuffers(file);
+    const DWORD error = ok ? ERROR_SUCCESS : GetLastError();
+    CloseHandle(file);
+    if (!ok) {
+        DeleteFileW(tmp.c_str());
+        SetLastError(error != ERROR_SUCCESS ? error : ERROR_WRITE_FAULT);
+        return false;
     }
     return MoveFileExW(tmp.c_str(), path.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH) != 0;
 }
@@ -404,12 +411,51 @@ bool IsDevelopmentBuild()
 #endif
 }
 
-bool SaveSettings(const Settings& s, std::wstring* warning)
+bool LowIntegrity()
+{
+    static const bool low = [] {
+        HANDLE token = nullptr;
+        if (!OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &token))
+            return false;
+        DWORD size = 0;
+        GetTokenInformation(token, TokenIntegrityLevel, nullptr, 0, &size);
+        std::vector<BYTE> buffer(size);
+        bool below = false;
+        if (size && GetTokenInformation(token, TokenIntegrityLevel, buffer.data(), size, &size)) {
+            const auto* label = reinterpret_cast<const TOKEN_MANDATORY_LABEL*>(buffer.data());
+            const DWORD rid = *GetSidSubAuthority(label->Label.Sid, *GetSidSubAuthorityCount(label->Label.Sid) - 1);
+            below = rid < SECURITY_MANDATORY_MEDIUM_RID;
+        }
+        CloseHandle(token);
+        return below;
+    }();
+    return low;
+}
+
+bool SaveSettings(const Settings& s, std::wstring* warning, std::wstring* error)
 {
     if (warning) warning->clear();
+    if (error) error->clear();
     const bool startupChanged = LoadSettings().startOnLogin != s.startOnLogin;
-    if (!WriteTextFile(SettingsPath(), s.ToJson()))
+    const std::wstring path = SettingsPath();
+    if (!WriteTextFile(path, s.ToJson())) {
+        const DWORD code = GetLastError();
+        wchar_t* text = nullptr;
+        FormatMessageW(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, code, 0,
+                       reinterpret_cast<wchar_t*>(&text), 0, nullptr);
+        std::wstring reason = text ? text : L"";
+        LocalFree(text);
+        while (!reason.empty() && (reason.back() == L'\n' || reason.back() == L'\r' || reason.back() == L' '))
+            reason.pop_back();
+        Log(L"settings: could not write %s (%lu)%s", path.c_str(), code, LowIntegrity() ? L", running at low integrity" : L"");
+        if (error) {
+            *error = TrFormat(L"无法写入 %s：%s（错误 %lu）", path.c_str(), reason.c_str(), code);
+            // Below medium integrity (an executable carrying a Low label) nothing in the profile is writable.
+            if (LowIntegrity())
+                *error += Tr(L"\nAtrium 正以低完整性级别运行，不能写入用户目录。请把 Atrium 解压到普通文件夹（例如 D:\\Atrium），确认 Atrium.exe 没有“低”完整性标签后重新启动。");
+        }
         return false;
+    }
     if (startupChanged && !SetStartOnLogin(s.startOnLogin)) {
         Log(L"settings: settings saved, but Windows startup could not be changed");
         if (warning) *warning = Tr(L"设置已保存，但未能修改 Windows 开机启动。请重新切换开机启动后再保存。");

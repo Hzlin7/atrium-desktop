@@ -564,7 +564,8 @@ void ApplySettings(const Settings& s)
     g_app.widgets->SetEnabled(s.widgets);
     g_app.widgetsOn = s.widgets;
     // The Windows key opens the start menu and the bar's apps, which belong to the bar.
-    const bool keyStart = s.bar && s.winKeyStart, keyNumbers = s.bar && s.winNumbers;
+    // Below medium integrity the keys it passes on would not reach the window in front: no hook at all.
+    const bool keyStart = s.bar && s.winKeyStart && !LowIntegrity(), keyNumbers = s.bar && s.winNumbers && !LowIntegrity();
     if (!(keyStart == g_app.winKeyStart && keyNumbers == g_app.winNumbers && bool(g_app.winKey) == (keyStart || keyNumbers))) {
         g_app.winKey.reset();
         if (keyStart || keyNumbers)
@@ -1353,6 +1354,8 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int)
     SetCurrentProcessExplicitAppUserModelID(kAppId);
     g_app.instance = instance;
     Log(L"core: starting");
+    if (LowIntegrity())
+        Log(L"core: running at low integrity (Atrium.exe has a Low label?): settings cannot be saved, the Windows key is left alone");
     const bool registeredHere = IsRegisteredApplication(ExeDir());
     RegisterApplication(ExeDir());
     // A crash must not leave the user without a taskbar.

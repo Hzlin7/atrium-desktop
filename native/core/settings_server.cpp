@@ -249,10 +249,10 @@ std::string SettingsServer::Handle(const std::string& request)
         if (!Settings::FromJson(std::wstring(o.GetNamedObject(L"settings").Stringify()), current, next))
             return Reply(L"error", L"invalid settings");
         if (op == L"commit") {
-            std::wstring warning;
-            if (!SaveSettings(next, &warning)) {
+            std::wstring warning, error;
+            if (!SaveSettings(next, &warning, &error)) {
                 Log(L"pipe: could not save settings (%s)", SettingsPath().c_str());
-                return Reply(L"error", L"could not save settings");
+                return Reply(L"error", error.empty() ? L"could not save settings" : error.c_str());
             }
             Log(L"pipe: commit saved");
             {

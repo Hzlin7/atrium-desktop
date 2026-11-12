@@ -283,6 +283,9 @@ const Entry kEnglish[] = {
     {L"网络", L"Network"},
     {L"没有可用的网络", L"No network"},
     {L"本次接收 %s · 发送 %s", L"Received %s · sent %s"},
+    {L"无法写入 %s：%s（错误 %lu）", L"Could not write %s: %s (error %lu)"},
+    {L"\nAtrium 正以低完整性级别运行，不能写入用户目录。请把 Atrium 解压到普通文件夹（例如 D:\\Atrium），确认 Atrium.exe 没有“低”完整性标签后重新启动。",
+     L"\nAtrium is running at low integrity and cannot write to your profile. Unzip it to an ordinary folder (such as D:\\Atrium), make sure Atrium.exe has no Low integrity label, then start it again."},
 };
 
 const std::unordered_map<std::wstring_view, const wchar_t*>& English()
