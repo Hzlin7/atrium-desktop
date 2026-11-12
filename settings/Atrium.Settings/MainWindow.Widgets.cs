@@ -76,9 +76,9 @@ public sealed partial class MainWindow
     {
         WidgetGallery.Opacity = WidgetsSwitch.IsOn ? 1 : 0.45;
         WidgetGallery.IsHitTestVisible = WidgetsSwitch.IsOn;
-        string offNote = Loc.T("先打开“桌面小组件”。");
-        if (!WidgetsSwitch.IsOn) WidgetHint.Text = offNote;
-        else if (WidgetHint.Text == offNote) WidgetHint.Text = Loc.T("点按添加到桌面");
+        // Only why the gallery does not answer: the widgets are off.
+        WidgetHint.Text = Loc.T("先打开“桌面小组件”。");
+        WidgetHint.Visibility = WidgetsSwitch.IsOn ? Visibility.Collapsed : Visibility.Visible;
     }
 
     // A gallery card: the widget on a piece of the bar's glass over the picture, rendered like the hero.
@@ -128,6 +128,7 @@ public sealed partial class MainWindow
         {
             var error = await _client.AddWidgetAsync(c.Kind, c.Size);
             WidgetHint.Text = error == null ? Loc.F("已把“{0}”放到桌面上。", c.Name) : error.Contains("room") ? Loc.T("桌面上没有空位了：先移除或缩小一个小组件。") : Loc.F("没有添加：{0}", error);
+            WidgetHint.Visibility = Visibility.Visible;
         };
         return button;
     }

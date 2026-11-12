@@ -401,8 +401,7 @@
                                 </local:SegmentTrack>
                             </Grid>
                             <StackPanel x:Name="WidgetGallery" Spacing="18" />
-                            <TextBlock x:Name="WidgetHint" Style="{StaticResource FootnoteStyle}" Margin="4,10,0,0"
-                                       Text="点按添加到桌面" />
+                            <TextBlock x:Name="WidgetHint" Style="{StaticResource FootnoteStyle}" Margin="4,10,0,0" Visibility="Collapsed" />
                         </StackPanel>
                     </StackPanel>
 
@@ -681,8 +680,6 @@
                                         <RadioButton x:Name="StartIconXLarge" GroupName="starticonsize" Content="极大" Tag="xlarge" Style="{StaticResource SegmentStyle}" Checked="OnStartIconSizeChecked" />
                                     </local:SegmentTrack>
                                 </StackPanel>
-                                <TextBlock Style="{StaticResource RowNoteStyle}" Margin="0,2,0,6"
-                                           Text="大小决定一页放几个，图标大小决定图标和文件夹封面画多大，格子跟着变。菜单里右键空白处也能分别选。" />
                                 <local:ToggleTile x:Name="StartStatusSwitch" Title="状态栏" SwitchName="开始菜单里的状态栏" Toggled="OnBarContentToggled" Flat="True" />
                                 <local:ToggleTile x:Name="StartTraySwitch" Title="托盘按钮" SwitchName="开始菜单里的托盘按钮" Toggled="OnBarContentToggled" Flat="True" />
                             </StackPanel>
