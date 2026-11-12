@@ -98,6 +98,7 @@ struct Settings {
     bool hideBanners = false;        // Do Not Disturb: no system banners, the notifications still become cards
     bool winKeyStart = false;        // the Windows key alone opens Atrium's start menu instead of Windows'
     bool winNumbers = false;         // Win + 1..9, 0 open the bar's apps
+    bool remoteVisible = false;      // remote-control apps see Atrium; the glass shows the wallpaper
     bool startOnLogin = true;        // independent of starting/stopping the current session
     // Pinned apps; nullopt = never saved yet (first run imports the Windows pins).
     std::optional<std::vector<PinnedApp>> pins;

@@ -98,7 +98,13 @@ private:
 bool PreferPowerSavingGpu();
 
 // Atrium's windows: always out of Desktop Duplication (Atrium's own
-// backdrop); out of every other capture too unless `visible`.
+// backdrop); out of every other capture too unless `visible`. In remote-control
+// mode out of none: the glass shows the wallpaper and nothing reads the screen.
 void SetCaptureExclusion(HWND hwnd, bool visible);
+
+// Remote-control mode (setting remoteVisible): remote-control apps capture the
+// screen with Desktop Duplication, which must then see Atrium too.
+void SetRemoteVisible(bool on);
+bool RemoteVisible();
 
 } // namespace atrium

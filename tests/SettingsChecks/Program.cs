@@ -35,6 +35,9 @@ Require(parsed.StageMinimize && BarSettings.FromJson(parsed.ToJson(), new()).Sta
 Require(!BarSettings.FromJson(new JsonObject(), new()).ShowClockSeconds, "Old files must keep the clock at minutes.");
 Require(!new BarSettings().MagnifyNear && !BarSettings.FromJson(new JsonObject(), new()).MagnifyNear,
     "Icons must not magnify above the bar unless chosen.");
+parsed = BarSettings.FromJson(JsonNode.Parse("""{"remoteVisible":true}""")!.AsObject(), new());
+Require(parsed.RemoteVisible && BarSettings.FromJson(parsed.ToJson(), new()).RemoteVisible && !new BarSettings().SameAs(parsed),
+    "Remote-control mode must survive a round trip and mark the settings dirty.");
 parsed = BarSettings.FromJson(JsonNode.Parse("""{"showClockSeconds":true}""")!.AsObject(), new());
 Require(parsed.ShowClockSeconds && parsed.ShowClock &&
         BarSettings.FromJson(parsed.ToJson(), new()).SameAs(parsed) && !new BarSettings().SameAs(parsed),

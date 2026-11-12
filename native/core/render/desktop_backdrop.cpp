@@ -389,4 +389,37 @@ void DesktopBackdrop::WallpaperLoop()
     CoUninitialize();
 }
 
+ID3D11Texture2D* WallpaperCapture::Acquire()
+{
+    wallpaper_.Update(L"wallpaper");
+    ID3D11Texture2D* picture = wallpaper_.Texture();
+    if (!picture || wallpaper_.Version() == version_)
+        return nullptr;
+    version_ = wallpaper_.Version();
+    MONITORINFO mi{sizeof(mi)};
+    if (!GetMonitorInfoW(monitor_, &mi))
+        return nullptr;
+    const RECT m = mi.rcMonitor;
+    const UINT w = UINT(m.right - m.left), h = UINT(m.bottom - m.top);
+    D3D11_TEXTURE2D_DESC pd{}, have{};
+    picture->GetDesc(&pd);
+    if (texture_)
+        texture_->GetDesc(&have);
+    if (!texture_ || have.Width != w || have.Height != h || have.Format != pd.Format) {
+        texture_ = nullptr;
+        D3D11_TEXTURE2D_DESC d{w, h, 1, 1, pd.Format, {1, 0}, D3D11_USAGE_DEFAULT, D3D11_BIND_SHADER_RESOURCE, 0, 0};
+        if (FAILED(gpu_.device->CreateTexture2D(&d, nullptr, texture_.put())))
+            return nullptr;
+    }
+    // The monitor's part of the desktop's picture.
+    const POINT o = wallpaper_.Origin();
+    D3D11_BOX box{UINT(std::max(0L, m.left - o.x)), UINT(std::max(0L, m.top - o.y)), 0, 0, 0, 1};
+    box.right = std::min(pd.Width, box.left + w);
+    box.bottom = std::min(pd.Height, box.top + h);
+    if (box.right <= box.left || box.bottom <= box.top)
+        return nullptr;
+    gpu_.context->CopySubresourceRegion(texture_.get(), 0, 0, 0, 0, picture, 0, &box);
+    return texture_.get();
+}
+
 } // namespace atrium

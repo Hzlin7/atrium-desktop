@@ -38,6 +38,9 @@ namespace atrium {
 
 class Surface;
 
+// Every Atrium window's capture exclusion again (remote-control mode changed). UI thread.
+void RefreshCaptureExclusion();
+
 class Bar : public GlassHost {
 public:
     // debugCapturable: development only. Leaves the bar visible to screen capture

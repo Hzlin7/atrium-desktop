@@ -3,6 +3,7 @@
 // unless the user hides it (setting hideTaskbar, shell/system_chrome.h; D37).
 
 #include "bar.h"
+#include "render/capture.h"
 #include "clock.h"
 #include "localization.h"
 #include "log.h"
@@ -572,6 +573,12 @@ void ApplySettings(const Settings& s)
             g_app.winKey = std::make_unique<WinKey>(g_app.host, WM_WIN_KEY, keyStart, keyNumbers);
         g_app.winKeyStart = keyStart;
         g_app.winNumbers = keyNumbers;
+    }
+    if (s.remoteVisible != RemoteVisible()) {
+        // The bars rebuild their backdrop on their next frame; the windows show to captures now.
+        SetRemoteVisible(s.remoteVisible);
+        RefreshCaptureExclusion();
+        Log(L"core: remote-control mode %s", s.remoteVisible ? L"on: Atrium shows in every capture, the glass shows the wallpaper" : L"off");
     }
     if (g_app.chrome) {
         // Without the bar, Windows' own taskbar and banners are never hidden.

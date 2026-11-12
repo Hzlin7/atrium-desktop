@@ -48,14 +48,22 @@ bool PreferPowerSavingGpu()
     return e == ERROR_SUCCESS;
 }
 
+std::atomic<bool> g_remoteVisible{false};
+
+void SetRemoteVisible(bool on) { g_remoteVisible = on; }
+bool RemoteVisible() { return g_remoteVisible; }
+
 void SetCaptureExclusion(HWND hwnd, bool visible)
 {
     if (!hwnd)
         return;
-    BOOL on = TRUE;
+    const bool remote = g_remoteVisible;
+    BOOL on = remote ? FALSE : TRUE;
     CompositionData d{kExcludedFromDda, &on, sizeof(on)};
-    if (!SetComposition() || !SetComposition()(hwnd, &d))
+    if ((!SetComposition() || !SetComposition()(hwnd, &d)) && !remote)
         visible = false; // without it, Desktop Duplication would see the window
+    if (remote)
+        visible = true;
     if (!SetWindowDisplayAffinity(hwnd, visible ? WDA_NONE : WDA_EXCLUDEFROMCAPTURE))
         Log(L"capture: SetWindowDisplayAffinity failed (%lu)", GetLastError());
 }

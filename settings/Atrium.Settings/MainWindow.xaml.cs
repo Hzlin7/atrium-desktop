@@ -839,6 +839,7 @@ public sealed partial class MainWindow : Window
         HideBannersSwitch.IsOn = _current.HideBanners;
         WinKeySwitch.IsOn = _current.WinKeyStart;
         WinNumbersSwitch.IsOn = _current.WinNumbers;
+        RemoteVisibleSwitch.IsOn = _current.RemoteVisible;
         (_current.StatusStyle == "icons" ? StatusIcons : StatusRing).IsChecked = true;
         (_current.AutoHide switch { "never" => HideNever, "always" => HideAlways, _ => HideFullscreen }).IsChecked = true;
         StartupSwitch.IsOn = _current.StartOnLogin;
@@ -1169,6 +1170,13 @@ public sealed partial class MainWindow : Window
     {
         if (_loading) return;
         _current.WinNumbers = WinNumbersSwitch.IsOn;
+        Changed();
+    }
+
+    private void OnRemoteVisibleToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _current.RemoteVisible = RemoteVisibleSwitch.IsOn;
         Changed();
     }
 

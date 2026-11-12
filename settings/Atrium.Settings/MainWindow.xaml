@@ -485,8 +485,6 @@
                                     <ComboBoxItem Content="简体中文" Tag="zh" />
                                     <ComboBoxItem Content="English" Tag="en" />
                                 </ComboBox>
-                                <TextBlock Style="{StaticResource RowNoteStyle}" TextWrapping="Wrap"
-                                           Text="Atrium 的栏、面板、小组件和设置中心使用的语言。跟随系统时，中文 Windows 使用中文，其余使用英文；更改会在保存后应用。" />
                             </StackPanel>
                         </Border>
                         <TextBlock Text="Windows" Style="{StaticResource SectionStyle}" />
@@ -499,6 +497,7 @@
                                               Note="打开 Windows 的“请勿打扰”；通知照常显示为 Atrium 卡片。关闭开关或退出时恢复。" />
                             <local:ToggleTile x:Name="WinKeySwitch" Title="Win 键打开 Atrium 开始菜单" SwitchName="Win 键打开 Atrium 开始菜单" Toggled="OnWinKeyToggled" />
                             <local:ToggleTile x:Name="WinNumbersSwitch" Title="Win + 数字键打开任务栏应用" SwitchName="Win + 数字键打开任务栏应用" Toggled="OnWinNumbersToggled" />
+                            <local:ToggleTile x:Name="RemoteVisibleSwitch" Title="远程控制兼容" SwitchName="远程控制兼容" Toggled="OnRemoteVisibleToggled" />
                         </local:ResponsiveGrid>
                     </StackPanel>
 

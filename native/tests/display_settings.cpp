@@ -61,6 +61,12 @@ void CheckSettings()
     Require(Settings::FromJson(LR"({})", Settings{}, parsed) && !parsed.showClockSeconds && parsed.showClock,
         "old settings keep the clock at minutes");
     Require(Settings::FromJson(LR"({})", Settings{}, parsed) && !parsed.magnifyNear, "icons do not magnify above the bar unless chosen");
+    Require(Settings::FromJson(LR"({})", Settings{}, parsed) && !parsed.remoteVisible, "Atrium stays out of the screen's capture unless chosen");
+    {
+        Settings remote;
+        remote.remoteVisible = true;
+        Require(Settings::FromJson(remote.ToJson(), Settings{}, parsed) && parsed.remoteVisible, "remote-control mode survives saving");
+    }
     Require(Settings::FromJson(LR"({"showClockSeconds":true})", settings, parsed) && parsed.showClockSeconds && parsed.showClock,
         "clock seconds toggle independently of the clock");
     Require(Settings::FromJson(LR"({"showClockSeconds":"bad"})", settings, parsed) && parsed.showClockSeconds,

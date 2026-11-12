@@ -69,6 +69,7 @@
 | `hideTaskbar` | bool | | false | Atrium 运行时隐藏系统任务栏（并设为自动隐藏），关闭或退出时恢复（D37）。隐藏期间另有一个看护进程（`Atrium.exe --guard <pid>`）：Atrium 无论怎样结束（崩溃、被结束进程），它都立刻还原任务栏、自动隐藏设置和请勿打扰；Atrium 约 15 秒无响应时先显示任务栏 |
 | `hideBanners` | bool | | false | 打开“请勿打扰”（仅闹钟）去掉系统横幅，通知仍显示为 Atrium 卡片；关闭或退出时恢复（D37） |
 | `winKeyStart` | bool | | false | 单独按下 Win 键时打开 Atrium 的开始菜单，Windows 的开始菜单不出现。低级键盘钩子在单独的线程上先扣下 Win 键：后面跟了别的键（Win + E 等）就把两个键一起交给 Windows，单独松开则 Windows 始终没有收到它。前台是管理员权限的窗口时（补发的按键送不进去）不拦截。Win + L 由系统在钩子之前处理，不受影响。需要打开 `bar` |
+| `remoteVisible` | bool | | false | “远程控制兼容”：Atrium 的窗口不再从屏幕采集（含 DXGI 桌面复制）中排除，UU 远程、ToDesk、向日葵等远控和录屏软件能看到任务栏、开始菜单和小组件；此时玻璃映出桌面壁纸，而不是实时的屏幕内容。切换后立即生效 |
 | `winNumbers` | bool | | false | Win + 1…9、0 打开栏上第 1…10 个应用，和点按它一样（没开就启动，开着就切换过去）。与 `winKeyStart` 共用同一个键盘钩子；只开这一项时，单独按 Win 仍交给 Windows。带 Shift、Ctrl、Alt 的组合照常交给 Windows。需要打开 `bar` |
 | `startOnLogin` | bool | | true | 当前用户开机自启：任务计划程序里当前用户的登录任务 `Atrium Startup-<SID>`（登录时随会话启动，不在 Explorer 的 Run 项队列里排队）；注册失败时退回 HKCU 的 Run 项。正式安装每次启动时，若此值为开且 Run 项没有在任务管理器里被关闭，就把旧版本的 Run 项换成登录任务；开发构建不修改开机项 |
 | `pins` | array | | 见下 | 固定的应用，按顺序显示 |

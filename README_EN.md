@@ -135,7 +135,7 @@ Atrium's releases are not code-signed, so each new version's files have no reput
 | Ready for daily use | Taskbar, start menu, control centre, calendar, tray, notifications, desktop widgets, Stage Manager, settings |
 | Experimental | Windows notifications shown as Atrium cards; WeChat and Feishu messages |
 | Not yet verified | Multiple displays, HDR, high refresh rates, sleep and wake, stable releases of Windows 11 |
-| Known limits | Recorders that use DXGI desktop duplication do not capture Atrium; on laptops with two GPUs, Atrium needs one restart after its first run |
+| Known limits | Recorders and remote-control apps that use DXGI desktop duplication (UU Remote, ToDesk, Sunlogin) do not see Atrium unless Remote control compatibility is on under System (the glass then shows the wallpaper); on laptops with two GPUs, Atrium needs one restart after its first run |
 
 ## Building
 

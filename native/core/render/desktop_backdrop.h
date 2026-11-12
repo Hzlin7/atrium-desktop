@@ -11,6 +11,7 @@
 // Render thread only, except the worker.
 #pragma once
 
+#include "capture.h"
 #include "gpu.h"
 
 #include <winrt/Windows.Foundation.h>
@@ -88,6 +89,25 @@ private:
     HANDLE stop_ = nullptr;
     std::mutex pictureLock_;
     std::unique_ptr<Picture> picture_; // new, not yet taken
+};
+
+// The glass's backdrop in remote-control mode (setting remoteVisible): the wallpaper under one
+// monitor, never the screen. Nothing reads the screen, so Atrium's windows may show in every
+// capture, a remote-control app's Desktop Duplication included.
+class WallpaperCapture : public BackdropSource {
+public:
+    WallpaperCapture(const Gpu& gpu, HMONITOR monitor, HANDLE frameEvent) : gpu_(gpu), monitor_(monitor), wallpaper_(gpu, frameEvent) {}
+    ID3D11Texture2D* Acquire() override;
+    void Release() override {}
+    bool KeepsOwnWindowsOut() const override { return true; }
+    const wchar_t* Name() const override { return L"the wallpaper"; }
+
+private:
+    const Gpu& gpu_;
+    HMONITOR monitor_;
+    DesktopBackdrop wallpaper_;
+    unsigned version_ = 0;
+    winrt::com_ptr<ID3D11Texture2D> texture_; // the monitor's part of the picture
 };
 
 } // namespace atrium

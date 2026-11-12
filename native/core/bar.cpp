@@ -242,6 +242,8 @@ void RegisterClasses(HINSTANCE instance)
 
 } // namespace
 
+void RefreshCaptureExclusion() { ApplyCapturePolicies(); }
+
 // OLE drop target on the input window: files dragged over an app bring it to
 // the front after a moment; dropping opens them with that app.
 struct BarDropTarget : winrt::implements<BarDropTarget, IDropTarget> {
@@ -1825,7 +1827,12 @@ bool Bar::RenderSession()
     // itself (so screenshots may show them); else Windows.Graphics.Capture
     // with Atrium kept out of every capture.
     std::unique_ptr<BackdropSource> capture;
-    if (!duplicationFailed_) {
+    // Remote-control mode: the wallpaper, so that the screen's capture may show Atrium.
+    const bool remote = RemoteVisible();
+    if (remote) {
+        capture = std::make_unique<WallpaperCapture>(gpu, snap.hmonitor, frame_);
+        Log(L"render: remote-control mode, the glass shows the wallpaper");
+    } else if (!duplicationFailed_) {
         HRESULT why = S_OK;
         bool elsewhere = false;
         for (int tries = 0;; ++tries) {
@@ -1958,7 +1965,10 @@ bool Bar::RenderSession()
             extra.bounds = info.rcMonitor;
             HRESULT why = S_OK;
             bool elsewhere = false;
-            extra.source = DuplicationCapture::Create(gpu, monitor, frame_, why, elsewhere);
+            if (remote)
+                extra.source = std::make_unique<WallpaperCapture>(gpu, monitor, frame_);
+            else
+                extra.source = DuplicationCapture::Create(gpu, monitor, frame_, why, elsewhere);
             if (!extra.source) {
                 ShowOwnWindowsToCapture(false);
                 mayShowInCapture = false;
@@ -2264,7 +2274,7 @@ bool Bar::RenderSession()
         ID3D11Texture2D* frame = capture->Acquire();
         if (capture->Lost())
             return true; // a new source (display mode change, secure desktop)
-        if (snap.hmonitor != captureMonitor || snap.displayGeneration != captureGeneration)
+        if (snap.hmonitor != captureMonitor || snap.displayGeneration != captureGeneration || RemoteVisible() != remote)
             return true; // selected display or its capture source changed
         if (!snap.visible) {
             // Retire the bar's reads even while hidden. Otherwise its last pending

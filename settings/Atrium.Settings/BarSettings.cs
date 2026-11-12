@@ -85,6 +85,7 @@ internal sealed class BarSettings
     public string WidgetMaterial { get; set; } = "glass"; // glass (the bar's) | dusk (dimmed glass, white ink) | color (their own faces)
     public bool HideTaskbar { get; set; }              // the system taskbar is hidden while Atrium runs
     public bool HideBanners { get; set; }              // Do Not Disturb: no system banners, notifications still become cards
+    public bool RemoteVisible { get; set; }            // remote-control apps see Atrium; the glass shows the wallpaper
     public bool WinKeyStart { get; set; }              // the Windows key alone opens Atrium's start menu
     public bool WinNumbers { get; set; }               // Win + 1..9, 0 open the bar's apps
     public bool StartOnLogin { get; set; } = true;
@@ -181,6 +182,7 @@ internal sealed class BarSettings
             ["widgetMaterial"] = WidgetMaterial,
             ["hideTaskbar"] = HideTaskbar,
             ["hideBanners"] = HideBanners,
+            ["remoteVisible"] = RemoteVisible,
             ["winKeyStart"] = WinKeyStart,
             ["winNumbers"] = WinNumbers,
             ["startOnLogin"] = StartOnLogin,
@@ -265,6 +267,7 @@ internal sealed class BarSettings
             ? wms : f.WidgetMaterial;
         s.HideTaskbar = Flag("hideTaskbar", f.HideTaskbar);
         s.HideBanners = Flag("hideBanners", f.HideBanners);
+        s.RemoteVisible = Flag("remoteVisible", f.RemoteVisible);
         s.WinKeyStart = Flag("winKeyStart", f.WinKeyStart);
         s.WinNumbers = Flag("winNumbers", f.WinNumbers);
         s.StartOnLogin = Flag("startOnLogin", f.StartOnLogin);
@@ -318,7 +321,7 @@ internal sealed class BarSettings
         NotifyListener == o.NotifyListener && NotifyWeChat == o.NotifyWeChat && NotifyFeishu == o.NotifyFeishu && Bar == o.Bar && Widgets == o.Widgets &&
         WidgetsOnRight == o.WidgetsOnRight && WidgetBackdrop == o.WidgetBackdrop && StageManager == o.StageManager && StageOnRight == o.StageOnRight &&
         StageAutoHide == o.StageAutoHide && StageMinimize == o.StageMinimize && WidgetMaterial == o.WidgetMaterial &&
-        HideTaskbar == o.HideTaskbar && HideBanners == o.HideBanners && WinKeyStart == o.WinKeyStart && WinNumbers == o.WinNumbers &&
+        HideTaskbar == o.HideTaskbar && HideBanners == o.HideBanners && RemoteVisible == o.RemoteVisible && WinKeyStart == o.WinKeyStart && WinNumbers == o.WinNumbers &&
         StartOnLogin == o.StartOnLogin &&
         DockDisplayMode == o.DockDisplayMode && DockDisplayDelay == o.DockDisplayDelay && DockDisplay == o.DockDisplay && DesktopDisplay == o.DesktopDisplay &&
         TaskbarApps == o.TaskbarApps && TaskbarRightPrimaryOnly == o.TaskbarRightPrimaryOnly &&

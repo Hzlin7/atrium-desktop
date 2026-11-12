@@ -139,6 +139,7 @@ std::wstring Settings::ToJson() const
     o.SetNamedValue(L"stageMinimize", json::JsonValue::CreateBooleanValue(stageMinimize));
     o.SetNamedValue(L"hideTaskbar", json::JsonValue::CreateBooleanValue(hideTaskbar));
     o.SetNamedValue(L"hideBanners", json::JsonValue::CreateBooleanValue(hideBanners));
+    o.SetNamedValue(L"remoteVisible", json::JsonValue::CreateBooleanValue(remoteVisible));
     o.SetNamedValue(L"winKeyStart", json::JsonValue::CreateBooleanValue(winKeyStart));
     o.SetNamedValue(L"winNumbers", json::JsonValue::CreateBooleanValue(winNumbers));
     o.SetNamedValue(L"startOnLogin", json::JsonValue::CreateBooleanValue(startOnLogin));
@@ -229,6 +230,7 @@ bool Settings::FromJson(const std::wstring& text, const Settings& base, Settings
     flag(L"stageMinimize", s.stageMinimize);
     flag(L"hideTaskbar", s.hideTaskbar);
     flag(L"hideBanners", s.hideBanners);
+    flag(L"remoteVisible", s.remoteVisible);
     flag(L"winKeyStart", s.winKeyStart);
     flag(L"winNumbers", s.winNumbers);
     flag(L"startOnLogin", s.startOnLogin);
