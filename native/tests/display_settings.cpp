@@ -51,6 +51,18 @@ void CheckSettings()
         settings.dockDisplayMode = mode;
         Require(Settings::FromJson(settings.ToJson(), Settings{}, parsed) && parsed.dockDisplayMode == mode, "every Dock mode survives saving");
     }
+    settings.showClockSeconds = true;
+    Require(Settings::FromJson(settings.ToJson(), Settings{}, parsed) && parsed.showClockSeconds, "clock seconds survive saving");
+    Require(Settings::FromJson(LR"({})", Settings{}, parsed) && !parsed.showClockSeconds && parsed.showClock,
+        "old settings keep the clock at minutes");
+    Require(Settings::FromJson(LR"({"showClockSeconds":true})", settings, parsed) && parsed.showClockSeconds && parsed.showClock,
+        "clock seconds toggle independently of the clock");
+    Require(Settings::FromJson(LR"({"showClockSeconds":"bad"})", settings, parsed) && parsed.showClockSeconds,
+        "malformed clock seconds retain the current value");
+    settings.showClockSeconds = false;
+    Require(Settings::FromJson(LR"({"showClockSeconds":true})", settings, parsed) && parsed.showClockSeconds &&
+            parsed.dockDisplayMode == L"all", "clock seconds preview without changing other keys");
+    Settings::FromJson(LR"({})", settings, parsed);
     for (const wchar_t* mode : {L"all", L"primaryAndWindow", L"window"}) {
         settings.taskbarApps = mode;
         Require(Settings::FromJson(settings.ToJson(), Settings{}, parsed) && parsed.taskbarApps == mode, "every task distribution mode survives saving");

@@ -23,6 +23,7 @@
 | `height` | number | 32–160 DIP | 60 | |
 | `margin` | number | 0–400 DIP | 10 | 与工作区底边的距离 |
 | `showClock` | bool | | true | 时钟与日期 |
+| `showClockSeconds` | bool | | false | 时钟在分钟之后显示秒；时间仍取系统的时间格式（含秒的长格式，系统格式没有秒时在分钟之后补上） |
 | `showTray` | bool | | true | 系统托盘入口 |
 | `startTray` | bool | | true | 开始菜单底部胶囊里的托盘按钮 |
 | `startStatus` | bool | | true | 开始菜单底部胶囊里的网络、音量和电池按钮 |

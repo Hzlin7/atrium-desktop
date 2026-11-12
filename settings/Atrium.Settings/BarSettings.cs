@@ -40,6 +40,7 @@ internal sealed class BarSettings
     public bool HoverRise { get; set; }               // glass follows the magnification wave (off unless chosen)
     public bool AutoWidth { get; set; } = true;
     public bool ShowClock { get; set; } = true;
+    public bool ShowClockSeconds { get; set; }        // seconds after the minutes (off unless chosen)
     public bool ShowTray { get; set; } = true;
     public bool StartTray { get; set; } = true;        // the tray's button in the start menu
     public bool StartStatus { get; set; } = true;      // its network, volume and battery buttons
@@ -132,6 +133,7 @@ internal sealed class BarSettings
             ["magnify"] = Magnify,
             ["hoverRise"] = HoverRise,
             ["showClock"] = ShowClock,
+            ["showClockSeconds"] = ShowClockSeconds,
             ["showTray"] = ShowTray,
             ["startTray"] = StartTray,
             ["startStatus"] = StartStatus,
@@ -213,6 +215,7 @@ internal sealed class BarSettings
         bool Flag(string k, bool d) => o?[k] is JsonValue v && v.TryGetValue(out bool b) ? b : d;
         s.HoverRise = Flag("hoverRise", f.HoverRise);
         s.ShowClock = Flag("showClock", f.ShowClock);
+        s.ShowClockSeconds = Flag("showClockSeconds", f.ShowClockSeconds);
         s.ShowTray = Flag("showTray", f.ShowTray);
         s.StartTray = Flag("startTray", f.StartTray);
         s.StartStatus = Flag("startStatus", f.StartStatus);
@@ -285,6 +288,7 @@ internal sealed class BarSettings
     public bool SameAs(BarSettings o) =>
         SameMaterial(o) && Preset == o.Preset && CornerRadius == o.CornerRadius && Width == o.Width && Height == o.Height &&
         Margin == o.Margin && IconSize == o.IconSize && Magnify == o.Magnify && HoverRise == o.HoverRise && AutoWidth == o.AutoWidth && ShowClock == o.ShowClock &&
+        ShowClockSeconds == o.ShowClockSeconds &&
         ShowTray == o.ShowTray && StartTray == o.StartTray && StartStatus == o.StartStatus && StartSize == o.StartSize && ShowStatus == o.ShowStatus && ShowNotifications == o.ShowNotifications &&
         ShowRunning == o.ShowRunning && TextColor == o.TextColor && AutoHide == o.AutoHide && StatusStyle == o.StatusStyle && NotifyTimeout == o.NotifyTimeout && NotifyHideBody == o.NotifyHideBody &&
         NotifyListener == o.NotifyListener && NotifyWeChat == o.NotifyWeChat && NotifyFeishu == o.NotifyFeishu && Bar == o.Bar && Widgets == o.Widgets &&

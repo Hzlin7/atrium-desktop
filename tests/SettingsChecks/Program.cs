@@ -32,6 +32,14 @@ Require(!BarSettings.FromJson(new JsonObject(), new()).StageMinimize, "Old files
 parsed = BarSettings.FromJson(JsonNode.Parse("""{"stageMinimize":true}""")!.AsObject(), new());
 Require(parsed.StageMinimize && BarSettings.FromJson(parsed.ToJson(), new()).StageMinimize && !new BarSettings().SameAs(parsed),
     "Minimizing to Stage Manager must survive a round trip and mark the settings dirty.");
+Require(!BarSettings.FromJson(new JsonObject(), new()).ShowClockSeconds, "Old files must keep the clock at minutes.");
+parsed = BarSettings.FromJson(JsonNode.Parse("""{"showClockSeconds":true}""")!.AsObject(), new());
+Require(parsed.ShowClockSeconds && parsed.ShowClock &&
+        BarSettings.FromJson(parsed.ToJson(), new()).SameAs(parsed) && !new BarSettings().SameAs(parsed),
+    "Clock seconds must survive a round trip, mark the settings dirty and leave the clock on.");
+Require(BarSettings.FromJson(JsonNode.Parse("""{"showClockSeconds":"bad"}""")!.AsObject(),
+        new() { ShowClockSeconds = true }).ShowClockSeconds,
+    "Malformed clock seconds must retain the current value.");
 Require(!BarSettings.FromJson(new JsonObject(), new()).TaskbarRightPrimaryOnly, "Old files must keep right-side elements on every display.");
 Require(BarSettings.FromJson(new JsonObject(), settings).TaskbarRightPrimaryOnly, "Partial updates must retain primary-only visibility.");
 Require(BarSettings.FromJson(JsonNode.Parse("""{"taskbarRightPrimaryOnly":"bad"}""")!.AsObject(), settings).TaskbarRightPrimaryOnly,

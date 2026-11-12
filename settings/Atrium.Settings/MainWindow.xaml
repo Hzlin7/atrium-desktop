@@ -679,6 +679,7 @@
                             <StackPanel>
                                 <TextBlock Text="时间" Style="{StaticResource SectionStyle}" />
                                 <local:ToggleTile x:Name="ClockSwitch" Title="时钟和日期" SwitchName="显示时钟和日期" Toggled="OnClockToggled" Flat="True" />
+                                <local:ToggleTile x:Name="ClockSecondsSwitch" Title="显示秒" Note="在分钟之后显示秒；位置跟随系统的时间格式。" SwitchName="时钟显示秒" Toggled="OnClockSecondsToggled" Flat="True" />
                             </StackPanel>
                         </StackPanel>
 

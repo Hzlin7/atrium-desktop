@@ -149,7 +149,7 @@ public sealed partial class MainWindow
                 if (_notifyFace.Icons[i].DataContext != vm) _notifyFace.Icons[i].DataContext = vm;
             }
             var clock = DateTime.Now;
-            _notifyFace.SetClock(clock.ToString("H:mm"), clock.ToString("yyyy/M/d"));
+            _notifyFace.SetClock(clock.ToString(_current.ShowClockSeconds ? "H:mm:ss" : "H:mm"), clock.ToString("yyyy/M/d"));
             _notifyFace.Layout(L, dark, L.N, running, 2, 1, 0, 0, StatusLook.Current());
         }, overlays: true, scaled: true);
         return L;

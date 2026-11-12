@@ -152,7 +152,7 @@ public sealed partial class MainWindow
         double P = Math.Max(I + 4, Math.Min(H - 12, Math.Round(I * 1.55)));
         double v = Math.Floor((H - P) / 2), pad = v + 4, gap = Math.Max(4, Math.Round(I * 0.18));
         double timePx = H * 0.25, datePx = H * 0.19, sepGap = 8;
-        double clockW = s.ShowClock ? Math.Max(timePx * 2.75, datePx * 5.7) + 22 : 0;
+        double clockW = s.ShowClock ? Math.Max(timePx * (s.ShowClockSeconds ? 4.8 : 2.75), datePx * 5.7) + 22 : 0;
         int rightCount = (s.ShowTray ? 1 : 0) + (s.ShowStatus ? 1 : 0) + (s.ShowNotifications ? 1 : 0) + (s.ShowClock ? 1 : 0);
         double statusExtra = s.StatusStyle == "icons" ? Math.Round(I * 1.3) : 0; // three icons: about an icon wider
         double rightW = (rightCount - (s.ShowClock ? 1 : 0)) * P + (s.ShowStatus ? statusExtra : 0) + clockW + Math.Max(0, rightCount - 1) * gap;
@@ -235,7 +235,7 @@ public sealed partial class MainWindow
             if (_loupeFace.Icons[i].DataContext != vm) _loupeFace.Icons[i].DataContext = vm;
         }
         var clock = DateTime.Now;
-        string time = clock.ToString("H:mm"), date = clock.ToString("yyyy/M/d");
+        string time = clock.ToString(_current.ShowClockSeconds ? "H:mm:ss" : "H:mm"), date = clock.ToString("yyyy/M/d");
         _face.SetClock(time, date);
         var status = StatusLook.Current();
         _face.Layout(L, DarkInk(), L.N, running, _current.Magnify, 1, 0, 0, status);
