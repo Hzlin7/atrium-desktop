@@ -76,6 +76,20 @@ void ShowQuietly(HWND h) { ShowWindowAsync(h, SW_SHOWNOACTIVATE); }
 
 bool OnMonitor(HWND h, HMONITOR m) { return MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST) == m; }
 
+// Not a window to stage: a layer over everything (a screenshot's selection, an overlay), topmost
+// without a title bar, or one covering the whole screen. It neither takes the stage, nor is put
+// away, nor is moved beside the strip; covering the screen, it sends the strip away instead.
+bool Transient(HWND h)
+{
+    const LONG_PTR style = GetWindowLongPtrW(h, GWL_STYLE), ex = GetWindowLongPtrW(h, GWL_EXSTYLE);
+    if ((ex & WS_EX_TOPMOST) && (style & WS_CAPTION) != WS_CAPTION)
+        return true;
+    MONITORINFO mi{sizeof(mi)};
+    RECT r{};
+    return !IsZoomed(h) && GetWindowRect(h, &r) && GetMonitorInfoW(MonitorFromWindow(h, MONITOR_DEFAULTTONEAREST), &mi) &&
+           r.left <= mi.rcMonitor.left && r.top <= mi.rcMonitor.top && r.right >= mi.rcMonitor.right && r.bottom >= mi.rcMonitor.bottom;
+}
+
 bool Has(const std::vector<std::wstring>& set, const std::wstring& key) { return std::find(set.begin(), set.end(), key) != set.end(); }
 
 // Each window waits on a card of its own: keyed by its app's key and itself ('|' is in neither an
@@ -287,11 +301,15 @@ void StageManager::Update(const std::vector<TaskItem>& items)
     auto active = std::find_if(items_.begin(), items_.end(), [](const TaskItem& t) { return t.active; });
     // A window in front, on this screen, of an app not on the stage: its set takes the stage. Not
     // while a set picked in the strip is on its way to the front.
-    if (active != items_.end() && root && !IsIconic(root) && OnMonitor(root, monitor_)) {
+    if (active != items_.end() && root && !IsIconic(root) && OnMonitor(root, monitor_) && !Transient(root)) {
         if (pending_.empty() || Has(pending_, active->key)) {
             pending_.clear();
             if (!Has(stage_, active->key)) {
-                Stage(SetOf(active->key), false, root, false);
+                // Another window of an app on the stage (a chat opened from the main window) joins
+                // it; the app's other windows stay up.
+                const std::wstring app = AppOf(active->key);
+                const bool sameApp = std::any_of(stage_.begin(), stage_.end(), [&](const std::wstring& k) { return AppOf(k) == app; });
+                Stage(sameApp ? Set{active->key} : SetOf(active->key), sameApp, root, false);
                 MoveBeside(root); // a window taking the stage over the strip moves beside it
             }
         }
@@ -323,7 +341,7 @@ void StageManager::Stage(const Set& keys, bool add, HWND front, bool activate, c
             bool any = false;
             // Least recent first: the most recent window gets the latest number and shows in front.
             for (auto h = t.windows.rbegin(); h != t.windows.rend(); ++h)
-                if (!parked_.contains(*h) && IsWindowVisible(*h) && !IsIconic(*h) && OnMonitor(*h, monitor_)) {
+                if (!parked_.contains(*h) && IsWindowVisible(*h) && !IsIconic(*h) && OnMonitor(*h, monitor_) && !Transient(*h)) {
                     Park(*h, t.key);
                     any = true;
                 }
@@ -923,6 +941,8 @@ void StageManager::MoveBeside(HWND window)
     if (!window || !IsWindow(window) || IsZoomed(window) || !OnMonitor(window, monitor_))
         return;
     const bool down = IsIconic(window) != FALSE;
+    if (!down && Transient(window))
+        return;
     auto parked = parked_.find(window);
     RECT frame{};
     if (down) {
