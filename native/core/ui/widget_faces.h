@@ -5,6 +5,7 @@
 
 #include "shell/bluetooth_batteries.h"
 #include "shell/lunar.h"
+#include "shell/network_monitor.h"
 #include "shell/system_status.h"
 #include "shell/weather.h"
 #include "shell/task_model.h"
@@ -16,7 +17,7 @@
 
 namespace atrium {
 
-enum class WidgetKind { Clock, Calendar, Battery, Digital, System, Notes, Reminders, Photos, Weather, Bluetooth };
+enum class WidgetKind { Clock, Calendar, Battery, Digital, System, Notes, Reminders, Photos, Weather, Bluetooth, Network };
 enum class WidgetSize { Small, Medium, Large };
 // Glass: the bar's clear glass, its ink adapting to what shows through. Dusk: the same glass
 // dimmed by a dark veil, everything on it white (macOS's dimmed desktop widgets). Color: each
@@ -75,6 +76,7 @@ struct WidgetWorld {
     Weather weather; // the forecast (weather.ok false: none yet)
     std::vector<BluetoothBattery> bluetooth; // the connected devices' batteries
     bool bluetoothRead = false;              // false until the first reading
+    const NetworkMonitor* network = nullptr; // the link's rates and their minute of history
 };
 
 // Places in a widget that respond to the pointer (content DIP): "toggle:<i>"

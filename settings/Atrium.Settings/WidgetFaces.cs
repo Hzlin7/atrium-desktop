@@ -221,6 +221,47 @@ internal static partial class WidgetFaces
                 }
                 break;
             }
+            case "network":
+            {
+                // PaintNetwork, with example data: the gallery reads no counters itself.
+                double down = 12.4 * 1024 * 1024, up = 1.2 * 1024 * 1024;
+                Color downInk = p.Icon == Ink.Mono ? A(p.Text, 0.95) : p.Blue;
+                Color upInk = p.Icon == Ink.Mono ? A(p.Text, 0.5) : p.Orange;
+                double[] downCurve = Curve(0, down * 0.92), upCurve = Curve(7, up * 0.92);
+                double graphTop = GraphTop(downCurve, upCurve);
+                bool compact = size == "small";
+                double pad = compact ? Pad : 16;
+                Text(c, "网络", pad + 1, pad - 2, w - pad - 40, pad + 16, compact ? 12.5 : 13.5, p.Sub, 2, 0, p);
+                if (!compact) Text(c, "以太网 · 1.0 Gbps", w / 2 - 60, pad - 1, w - pad - 1, pad + 16, 11, p.Sub, 0, 2, p);
+                // A rate: its arrow, the value, the unit on the same baseline (MiSans: 1.044 em down).
+                void Rate(double top, double bottom, double bps, bool outRate, double arrow, double font, double unitSize)
+                {
+                    double cy = (top + bottom) / 2, x0 = pad + 2;
+                    RateArrow(c, x0 + arrow, cy, arrow, !outRate, outRate ? upInk : downInk);
+                    double x = x0 + 2 * arrow + 9;
+                    string value = (bps / 1024 / 1024).ToString("0.0", CultureInfo.InvariantCulture);
+                    Text(c, value, x, top, w - pad, bottom, font, p.Text, 2, 0, p);
+                    double tw = TextWidth(value, font, "TitleFont"), shift = 0.381 * (font - unitSize);
+                    Text(c, "MB/s", x + tw + 4, top + shift, x + tw + 4 + unitSize * 5, bottom + shift, unitSize, p.Sub, 2, 0, p);
+                }
+                if (compact)
+                {
+                    Rate(32, 60, down, false, 6.5, 20, 10.5);
+                    Rate(62, 84, up, true, 5, 14.5, 9.5);
+                    Line(c, pad, 126, w - pad, 126, p.Track, 1);
+                    GraphLine(c, downCurve, graphTop, pad, 90, w - pad, 126, downInk);
+                    GraphLine(c, upCurve, graphTop, pad, 90, w - pad, 126, upInk);
+                    Text(c, "以太网", pad + 1, h - pad - 14, w - pad, h - pad + 1, 10, p.Sub, 0, 0, p);
+                    break;
+                }
+                Rate(34, 72, down, false, 8, 32, 12.5);
+                Rate(74, 96, up, true, 6, 18, 11);
+                Line(c, pad, 136, w - pad, 136, p.Track, 1);
+                GraphLine(c, downCurve, graphTop, pad, 102, w - pad, 136, downInk);
+                GraphLine(c, upCurve, graphTop, pad, 102, w - pad, 136, upInk);
+                Text(c, "本次接收 1.24 GB · 发送 86.0 MB", pad, 140, w - pad, 154, 10, p.Sub, 0, 0, p);
+                break;
+            }
             case "system":
             {
                 (string Name, double V, string Detail)[] g = { ("CPU", 0.23, "处理器"), ("内存", 0.58, "9.2 / 16 GB"), ("磁盘", 0.74, "214 GB 可用") };
@@ -545,6 +586,51 @@ internal static partial class WidgetFaces
     private static void Line(Canvas c, double x1, double y1, double x2, double y2, Color ink, double width) =>
         c.Children.Add(new Line { X1 = x1, Y1 = y1, X2 = x2, Y2 = y2, Stroke = new SolidColorBrush(ink), StrokeThickness = width,
                                   StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round });
+
+    // A rate's arrow: a shaft and two head strokes, down for what comes in, up for what goes out.
+    private static void RateArrow(Canvas c, double cx, double cy, double r, bool down, Color ink)
+    {
+        double w = Math.Max(1.2, r * 0.34), tip = down ? cy + r : cy - r, tail = down ? cy - r : cy + r;
+        double head = down ? tip - r * 0.6 : tip + r * 0.6;
+        Line(c, cx, tail, cx, tip, ink, w);
+        Line(c, cx, tip, cx - r * 0.62, head, ink, w);
+        Line(c, cx, tip, cx + r * 0.62, head, ink, w);
+    }
+
+    // One series of the traffic graph, its newest second on the right edge.
+    private static void GraphLine(Canvas c, double[] v, double top, double l, double t, double r, double b, Color ink)
+    {
+        if (v.Length < 2) return;
+        var line = new Polyline
+        {
+            Stroke = new SolidColorBrush(ink), StrokeThickness = 1.6, StrokeLineJoin = PenLineJoin.Round,
+            StrokeStartLineCap = PenLineCap.Round, StrokeEndLineCap = PenLineCap.Round,
+        };
+        double step = (r - l) / (v.Length - 1);
+        for (int i = 0; i < v.Length; i++)
+            line.Points.Add(new Point(l + step * i, b - (b - t) * Math.Min(v[i], top) / top));
+        c.Children.Add(line);
+        Circle(c, r, b - (b - t) * Math.Min(v[v.Length - 1], top) / top, 1.8, ink);
+    }
+
+    // The graph's top: the peak rounded up to 1, 2 or 5 times a power of ten, with an idle floor.
+    private static double GraphTop(params double[][] series)
+    {
+        double peak = 0;
+        foreach (var s in series) foreach (double v in s) peak = Math.Max(peak, v);
+        if (peak <= 16384) return 16384;
+        double e = Math.Pow(10, Math.Floor(Math.Log10(peak))), m = peak / e;
+        return (m <= 1 ? 1 : m <= 2 ? 2 : m <= 5 ? 5 : 10) * e;
+    }
+
+    // A plausible minute of traffic for the gallery's example: two slow waves over a floor.
+    private static double[] Curve(int seed, double peak)
+    {
+        var v = new double[60];
+        for (int i = 0; i < v.Length; i++)
+            v[i] = Math.Max(0.02, 0.55 + Math.Sin((i + seed) * 0.28) * 0.5 + Math.Sin((i + seed) * 0.11 + 1.7) * 0.35) * peak;
+        return v;
+    }
 
     // An arc from `from` degrees (0 = right, -90 = top) over `sweep`, clockwise.
     private static void Arc(Canvas c, double cx, double cy, double r, double from, double sweep, Color ink, double width, bool caps)

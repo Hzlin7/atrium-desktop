@@ -90,7 +90,7 @@ Click the ring for the control centre: Wi‑Fi, Bluetooth, battery, casting, Sta
   <img src="docs/images/readme/widgets.jpg" alt="Widgets on the desktop" width="100%">
 </p>
 
-Ten kinds — clock, digital clock, calendar (with the lunar calendar), weather, battery, Bluetooth devices, system monitor, notes, reminders and photos — in three sizes. The medium clock and digital clock show the time in a few cities; right-click and choose 更改城市… (Change city) to swap any of them. They snap to a grid wherever you drop them; hover one and an arc appears at its lower corner, drag it to resize. Widgets sit below all windows and come to the top when you press Win + D.
+Eleven kinds — clock, digital clock, calendar (with the lunar calendar), weather, battery, Bluetooth devices, network, system monitor, notes, reminders and photos — in three sizes. The medium clock and digital clock show the time in a few cities; right-click and choose 更改城市… (Change city) to swap any of them. They snap to a grid wherever you drop them; hover one and an arc appears at its lower corner, drag it to resize. Widgets sit below all windows and come to the top when you press Win + D.
 
 <p align="center">
   <img src="docs/images/readme/widget-materials.jpg" alt="The widgets' three materials: like the taskbar, dusk and colour" width="100%">
