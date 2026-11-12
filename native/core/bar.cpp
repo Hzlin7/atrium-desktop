@@ -1455,10 +1455,12 @@ void Bar::WatchNear()
     Publish();
 }
 
-// Watched while the bar is on screen; a tick steps aside for a tucked bar by itself.
+// Watched while the bar is on screen and something answers the pointer above it; a tick
+// steps aside for a tucked bar by itself.
 void Bar::UpdateNearWatch()
 {
-    if (visible_)
+    const bool wanted = settings_.magnify > 1.001f && ((settings_.hoverRise && settings_.riseNear) || settings_.magnifyNear);
+    if (visible_ && wanted)
         SetTimer(input_, kNearTimer, kNearMs, nullptr);
     else {
         KillTimer(input_, kNearTimer);
@@ -2216,7 +2218,15 @@ bool Bar::RenderSession()
                 ++tick;
             }
         } else {
-            w = WaitForMultipleObjects(3, handles, FALSE, paced ? 6 : readback ? 3 : 1000);
+            // Idle, a clock with seconds wakes just past the next whole second: a plain second's
+            // timeout drifts by the work of each pass, and every so often a second is skipped.
+            DWORD idle = 1000;
+            if (snap.settings.showClock && snap.settings.showClockSeconds) {
+                SYSTEMTIME t{};
+                GetLocalTime(&t);
+                idle = DWORD(1000 - t.wMilliseconds) + 16;
+            }
+            w = WaitForMultipleObjects(3, handles, FALSE, paced ? 6 : readback ? 3 : idle);
             ++tick;
         }
         if (w == WAIT_OBJECT_0)
