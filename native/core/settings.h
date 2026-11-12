@@ -36,8 +36,17 @@ struct Settings {
     double magnify = 1.7;            // dock magnification under the pointer: icon scale, 1 = off
     bool startTray = true;           // the tray's button in the start menu's capsule
     bool startStatus = true;         // the network, volume and battery buttons there
-    std::wstring startSize;          // the start menu's: small | medium | large; empty: as start.json has it (older files)
+    // The start menu's: small | medium | large | xlarge; empty: as start.json has it
+    // (older files). `startIcon`: how large its icons and folders are drawn, four
+    // steps of its own.
+    std::wstring startSize;
+    std::wstring startIcon;
     bool hoverRise = false;           // glass rises with the pointer's magnification wave
+    // A pointer resting just above the bar is answered ahead of time: the glass rises
+    // to it (with hoverRise) and the icons magnify — each on its own switch.
+    bool riseNear = true;
+    bool magnifyNear = true;
+    double nearEnter = 40, nearLeave = 48; // DIP above the glass where that starts, and where it lets go
     bool autoWidth = true;           // shrink to the content
     bool showClock = true;
     bool showClockSeconds = false;    // seconds after the minutes, in the system's long time format

@@ -512,6 +512,7 @@ void ApplySettings(const Settings& s)
     g_app.start->SetShowTray(s.startTray);
     g_app.start->SetShowStatus(s.startStatus);
     g_app.start->SetPreferredSize(s.startSize);
+    g_app.start->SetPreferredIcon(s.startIcon);
     g_app.notes->SetRadius(radius);
     g_app.notes->SetOptions(s.notifyTimeout, s.notifyHideBody, s.notifyPlacement);
     // Notification cards belong to the bar (its bell): without it, Windows shows its own banners.
@@ -1460,10 +1461,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int)
     ApplySettings(settings);
     g_app.bar->SetItems(g_app.tasks->Snapshot());
     g_app.server = std::make_unique<SettingsServer>(g_app.host, settings);
-    // The start menu's size is a setting (the settings show it); kept in start.json before.
+    // The start menu's size and its icons' size are settings (the settings show them);
+    // kept in start.json before.
     g_app.start->onSize = [](const std::wstring& name) { g_app.server->Modify([&](Settings& s) { s.startSize = name; }); };
+    g_app.start->onIcon = [](const std::wstring& name) { g_app.server->Modify([&](Settings& s) { s.startIcon = name; }); };
     if (settings.startSize.empty())
         g_app.start->onSize(g_app.start->SizeName());
+    if (settings.startIcon.empty())
+        g_app.start->onIcon(g_app.start->IconSizeName());
     // The start menu shows the Windows start menu's pins; from there an app
     // can be pinned to the bar (the bar's own pins are separate).
     g_app.start->onPin = [](const PinnedApp& pin) {

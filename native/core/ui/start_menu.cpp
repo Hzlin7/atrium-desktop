@@ -29,11 +29,35 @@ namespace atrium {
 namespace {
 
 // DIP. The panel above, the status capsule (the bar's height) kGap below it.
-// The panel: the search row, the grid (cols x rows cells of kCellW x kCellH,
-// kGridPad at the sides; the medium 9 x 4 makes the 704 x 480 of DESIGN.md), the page dots.
+// The panel: the search row, the grid (cols x rows cells, kGridPad at the
+// sides), the page dots.
 constexpr float kGap = 12;
 constexpr float kSearchX = 24, kSearchTop = 20, kSearchH = 44, kAllW = 108;
-constexpr float kGridTop = 86, kGridFoot = 42, kGridPad = 28, kCellW = 72, kCellH = 88, kIcon = 40;
+constexpr float kGridTop = 86, kGridFoot = 42, kGridPad = 28;
+// The menu's size (start.json's "size"): the tiles across and down, small to
+// the largest. Medium is the 9 x 4, 704 x 480 of DESIGN.md.
+struct StartGrid {
+    int cols, rows;
+};
+constexpr StartGrid kStartGrids[StartLayout::kSizes] = {
+    {7, 3},  // small
+    {9, 4},  // medium
+    {11, 5}, // large
+    {13, 6}, // the largest
+};
+// The icons' size (start.json's "icon"), a choice of its own: how large a
+// tile's icon and a folder's cover are drawn, the cell around them, and the
+// name under the icon, which grows with the icon. Bigger icons need more
+// room, so the panel follows.
+struct StartIconSize {
+    float icon, cellW, cellH, label, labelH;
+};
+constexpr StartIconSize kStartIcons[StartLayout::kSizes] = {
+    {34, 62, 82, 11.5f, 16},   // small
+    {40, 72, 88, 12.5f, 17},   // medium
+    {52, 94, 100, 14.5f, 19},  // large
+    {64, 116, 112, 16.5f, 21}, // the largest
+};
 constexpr float kRowH = 52, kRowIcon = 28, kHeadH = 34, kListTop = 84;
 constexpr float kFolderHead = 52, kFolderFoot = 24, kFolderPad = 14; // the open folder: its name above its apps, its dots below
 constexpr float kIndexW = 22, kHint = 52;           // the A-Z list's letters down its left side; the letter picked, large
@@ -108,8 +132,10 @@ StartTile* Find(std::vector<StartTile>& tiles, const std::wstring& id)
     return it == tiles.end() ? nullptr : &*it;
 }
 
-enum MenuCommand { kOpen = 1, kPinBar, kPinStart, kRemove, kOutOfFolder, kRename, kUngroup, kReset, kHide, kUnhide, kShowHidden, kAdmin,
-                   kLocation, kSize /* + the size */ };
+enum MenuCommand {
+    kOpen = 1, kPinBar, kPinStart, kRemove, kOutOfFolder, kRename, kUngroup, kReset, kHide, kUnhide, kShowHidden, kAdmin, kLocation,
+    kSize, /* + the menu's size */ kIcon = kSize + StartLayout::kSizes /* + the icons' size */
+};
 
 } // namespace
 
@@ -119,10 +145,10 @@ StartMenu::StartMenu(HINSTANCE instance, TaskModel& tasks, AppCatalog& catalog)
     surface_.paint = [this](Canvas& c) { Paint(c); };
     surface_.message = [this](UINT m, WPARAM w, LPARAM l, LRESULT& r) { return Message(m, w, l, r); };
     surface_.onDismiss = [this] { Close(false); }; // a press next to the menu
-    cols_ = StartLayout::kCols[layout_.size];
-    rows_ = StartLayout::kRows[layout_.size];
-    shown_ = layout_.size;
-    Log(L"start: %d x %d tiles, %s", StartLayout::kCols[layout_.size], StartLayout::kRows[layout_.size],
+    cols_ = kStartGrids[layout_.size].cols;
+    rows_ = kStartGrids[layout_.size].rows;
+    grid_ = layout_.size;
+    Log(L"start: %d x %d tiles, %.0f DIP icons, %s", cols_, rows_, kStartIcons[layout_.icon].icon,
         layout_.custom ? L"arranged by the user" : L"the Windows start menu's pins");
 }
 
@@ -130,44 +156,114 @@ StartMenu::StartMenu(HINSTANCE instance, TaskModel& tasks, AppCatalog& catalog)
 
 float StartMenu::W() const { return panelW_; }
 float StartMenu::H() const { return mainH_ + kGap + barH_; }
-D2D1_SIZE_F StartMenu::SizeFor(int size) const
+float StartMenu::IconSize() const { return kStartIcons[layout_.icon].icon; }
+float StartMenu::CellW() const { return kStartIcons[layout_.icon].cellW; }
+float StartMenu::CellH() const { return kStartIcons[layout_.icon].cellH; }
+float StartMenu::LabelSize() const { return kStartIcons[layout_.icon].label; }
+float StartMenu::LabelH() const { return kStartIcons[layout_.icon].labelH; }
+// Icons are read once, at the largest size (kStartIcons' last): a smaller size
+// draws the same bitmap smaller, so changing the size never reads a file.
+int StartMenu::IconPx() const { return int(std::lround(kStartIcons[StartLayout::kSizes - 1].icon * PopupScale(bar_) * 1.1f)); }
+D2D1_SIZE_F StartMenu::SizeFor(int grid, int icons) const
 {
-    return D2D1::SizeF(float(StartLayout::kCols[size]) * kCellW + 2 * kGridPad, kGridTop + float(StartLayout::kRows[size]) * kCellH + kGridFoot + kGap + barH_);
+    const StartGrid& g = kStartGrids[grid];
+    const StartIconSize& s = kStartIcons[icons];
+    return D2D1::SizeF(float(g.cols) * s.cellW + 2 * kGridPad, kGridTop + float(g.rows) * s.cellH + kGridFoot + kGap + barH_);
 }
-D2D1_SIZE_F StartMenu::Size() const { return SizeFor(room_); }
+// The window: the largest grid the work area has room for at these icons, so
+// that either size may grow later without the menu leaving the window. The
+// panel inside it springs to the size chosen (PanelSize).
+D2D1_SIZE_F StartMenu::Size() const { return SizeFor(room_, layout_.icon); }
+D2D1_SIZE_F StartMenu::PanelSize() const { return SizeFor(grid_, layout_.icon); }
 float StartMenu::OffsetY() const { return float(surface_.Rect().bottom - surface_.Rect().top) / surface_.Scale() - H(); }
 LONG StartMenu::OffsetPx() const { return std::lround(OffsetY() * surface_.Scale()); }
 
-bool StartMenu::Fits(int size) const
+bool StartMenu::Fits(int grid, int icons) const
 {
-    const D2D1_SIZE_F z = SizeFor(size);
+    const D2D1_SIZE_F z = SizeFor(grid, icons);
     const float scale = PopupScale(bar_);
     const RECT r = PopupRect(bar_, z, PopupAlign::Left);
     return r.bottom - r.top >= std::lround(z.height * scale) - 1 && r.right - r.left >= std::lround(z.width * scale) - 1;
 }
 
+// The settings window's choices (settings.json's startSize and startIcon: small,
+// medium, large, xlarge). Neither reads an icon: every icon is kept at the
+// largest size and drawn smaller, so changing either never waits on a file.
 void StartMenu::SetPreferredSize(const std::wstring& name)
 {
-    const int size = name == L"small" ? 0 : name == L"medium" ? 1 : name == L"large" ? 2 : -1;
+    const int size = name == L"small" ? 0 : name == L"medium" ? 1 : name == L"large" ? 2 : name == L"xlarge" ? 3 : -1;
     if (size < 0 || size == layout_.size)
         return;
     layout_.size = size;
     SaveStartLayout(layout_);
     if (surface_.Visible())
-        SetSize(size);
+        SetSize(layout_.size, layout_.icon);
     Log(L"start: size %s from the settings", name.c_str());
 }
 
-std::wstring StartMenu::SizeName() const { return layout_.size == 0 ? L"small" : layout_.size == 2 ? L"large" : L"medium"; }
-
-void StartMenu::SetSize(int size)
+void StartMenu::SetPreferredIcon(const std::wstring& name)
 {
-    // The grid takes the new size at once (the tiles glide to their places), the glass springs to it.
-    shown_ = std::clamp(size, 0, room_);
-    cols_ = StartLayout::kCols[shown_];
-    rows_ = StartLayout::kRows[shown_];
+    const int icon = name == L"small" ? 0 : name == L"medium" ? 1 : name == L"large" ? 2 : name == L"xlarge" ? 3 : -1;
+    if (icon < 0 || icon == layout_.icon)
+        return;
+    layout_.icon = icon;
+    SaveStartLayout(layout_);
+    if (surface_.Visible())
+        SetSize(layout_.size, layout_.icon);
+    Log(L"start: icons %s from the settings", name.c_str());
+}
+
+std::wstring StartMenu::SizeName() const
+{
+    static const wchar_t* const kNames[] = {L"small", L"medium", L"large", L"xlarge"};
+    return kNames[layout_.size];
+}
+
+std::wstring StartMenu::IconSizeName() const
+{
+    static const wchar_t* const kNames[] = {L"small", L"medium", L"large", L"xlarge"};
+    return kNames[layout_.icon];
+}
+
+// The largest grid that fits at these icons: the window's size, and the most
+// the menu may be grown to.
+void StartMenu::UpdateRoom()
+{
+    room_ = 0;
+    for (int grid = 1; grid < StartLayout::kSizes; ++grid)
+        if (Fits(grid, layout_.icon))
+            room_ = grid;
+}
+
+// The menu's size and its icons' size are separate choices; either may change
+// on its own. The grid and the cells take it at once (the tiles glide to their
+// places) and the glass springs to it. No icon is read: they are all kept at
+// the largest size and drawn smaller when needed.
+void StartMenu::SetSize(int grid, int icons)
+{
+    // Bigger icons leave room for fewer tiles: the window is measured again,
+    // and the menu kept inside it. The choice itself is kept as made (it comes
+    // back when the icons leave room for it again).
+    layout_.icon = std::clamp(icons, 0, StartLayout::kSizes - 1);
+    layout_.size = std::clamp(grid, 0, StartLayout::kSizes - 1);
+    UpdateRoom();
+    grid_ = std::min(layout_.size, room_);
+    cols_ = kStartGrids[grid_].cols;
+    rows_ = kStartGrids[grid_].rows;
     page_ = std::clamp(page_, 0, Pages() - 1);
     folderPage_ = std::clamp(folderPage_, 0, FolderPages() - 1);
+    // The window follows the icons (the panel springs inside it, it does not).
+    if (surface_.Visible()) {
+        const RECT want = PopupRect(bar_, Size(), PopupAlign::Left);
+        const RECT have = surface_.Rect();
+        if (!EqualRect(&want, &have))
+            surface_.Move(want);
+        // Smaller icons shrink the window: the panel takes the new bounds at
+        // once, so no frame of the spring is drawn outside them.
+        const D2D1_SIZE_F z = Size();
+        panelW_ = std::min(panelW_, z.width);
+        mainH_ = std::min(mainH_, z.height - kGap - barH_);
+    }
     surface_.Invalidate();
 }
 D2D1_RECT_F StartMenu::MainRect() const { return D2D1::RectF(0, 0, W(), H() - barH_ - kGap); }
@@ -175,20 +271,21 @@ D2D1_RECT_F StartMenu::ShelfRect() const { return D2D1::RectF(0, H() - barH_, W(
 D2D1_RECT_F StartMenu::AllButton() const { return D2D1::RectF(W() - kSearchX - kAllW, kSearchTop, W() - kSearchX, kSearchTop + kSearchH); }
 D2D1_RECT_F StartMenu::SearchRect() const { return D2D1::RectF(kSearchX, kSearchTop, AllButton().left - 8, kSearchTop + kSearchH); }
 float StartMenu::ListBottom() const { return MainRect().bottom - 44; }
-float StartMenu::GridX() const { return (W() - float(cols_) * kCellW) / 2; }
+float StartMenu::GridX() const { return (W() - float(cols_) * CellW()) / 2; }
 float StartMenu::ButtonSize() const { return std::min(44.f, barH_ - 12); }
 
 D2D1_RECT_F StartMenu::Cell(int slot) const
 {
     const int per = PerPage(), page = slot / per, k = slot % per;
-    const float x = GridX() + float(k % cols_) * kCellW + float(page) * W(), y = kGridTop + float(k / cols_) * kCellH;
-    return D2D1::RectF(x, y, x + kCellW, y + kCellH);
+    const float cw = CellW(), ch = CellH();
+    const float x = GridX() + float(k % cols_) * cw + float(page) * W(), y = kGridTop + float(k / cols_) * ch;
+    return D2D1::RectF(x, y, x + cw, y + ch);
 }
 
 D2D1_RECT_F StartMenu::FolderRect() const
 {
     // Just big enough for its apps (pages of them beyond), centred over the grid.
-    const float w = float(FolderCols()) * kCellW + 2 * kFolderPad, h = kFolderHead + float(FolderRows()) * kCellH + kFolderFoot;
+    const float w = float(FolderCols()) * CellW() + 2 * kFolderPad, h = kFolderHead + float(FolderRows()) * CellH() + kFolderFoot;
     const float cx = W() / 2, cy = (kListTop - 10 + MainRect().bottom - 14) / 2;
     return D2D1::RectF(cx - w / 2, cy - h / 2, cx + w / 2, cy + h / 2);
 }
@@ -200,7 +297,7 @@ int StartMenu::FolderCols() const { return std::clamp(FolderApps(), 3, 4); }
 int StartMenu::FolderRows() const
 {
     const float room = MainRect().bottom - 14 - (kListTop - 10) - kFolderHead - kFolderFoot;
-    return std::clamp((FolderApps() + FolderCols() - 1) / FolderCols(), 1, std::max(1, int(room / kCellH)));
+    return std::clamp((FolderApps() + FolderCols() - 1) / FolderCols(), 1, std::max(1, int(room / CellH())));
 }
 
 D2D1_RECT_F StartMenu::IndexRect() const { return D2D1::RectF(10, kListTop + 2, 10 + kIndexW, ListBottom() - 2); }
@@ -209,9 +306,10 @@ D2D1_RECT_F StartMenu::FolderCell(int slot) const
 {
     const D2D1_RECT_F f = FolderRect();
     const int cols = FolderCols(), per = cols * FolderRows(), page = slot / per, k = slot % per;
-    const float x0 = (f.left + f.right - float(cols) * kCellW) / 2;
-    const float x = x0 + float(k % cols) * kCellW + float(page) * (f.right - f.left), y = f.top + kFolderHead + float(k / cols) * kCellH;
-    return D2D1::RectF(x, y, x + kCellW, y + kCellH);
+    const float cw = CellW(), ch = CellH();
+    const float x0 = (f.left + f.right - float(cols) * cw) / 2;
+    const float x = x0 + float(k % cols) * cw + float(page) * (f.right - f.left), y = f.top + kFolderHead + float(k / cols) * ch;
+    return D2D1::RectF(x, y, x + cw, y + ch);
 }
 
 D2D1_RECT_F StartMenu::PowerRect() const
@@ -309,16 +407,13 @@ void StartMenu::Open(RECT bar, RECT logo, HWND previous)
         onStatusRequest();
     LoadAccount();
     // The window has the largest size the work area has room for; the menu its own size, if it fits.
-    room_ = 0;
-    for (int size = 1; size < StartLayout::kSizes; ++size)
-        if (Fits(size))
-            room_ = size;
-    SetSize(layout_.size);
-    const D2D1_SIZE_F z = SizeFor(shown_);
+    UpdateRoom();
+    SetSize(layout_.size, layout_.icon);
+    const D2D1_SIZE_F z = PanelSize();
     panelW_ = z.width;
     mainH_ = z.height - kGap - barH_;
     panelV_ = mainV_ = 0;
-    RECT r = PopupRect(bar, Size(), PopupAlign::Left);
+    RECT r = PopupRect(bar_, Size(), PopupAlign::Left);
     Restage();
     // Pops out of the logo.
     POINT anchor{(logo.left + logo.right) / 2, r.bottom};
@@ -429,9 +524,15 @@ void StartMenu::Rebuild()
         }
     }
     std::vector<std::wstring> ids;
-    for (const Tile& t : tiles_)
-        if (!t.folder)
+    for (const Tile& t : tiles_) {
+        // A folder's apps are read ahead with the tiles': opening it must find them there.
+        if (!t.folder) {
             ids.push_back(t.key);
+            continue;
+        }
+        for (const CatalogApp& a : t.apps)
+            ids.push_back(a.id);
+    }
     catalog_.SetStartIds(std::move(ids));
     folder_ = -1;
     for (size_t i = 0; i < tiles_.size() && !openKey.empty(); ++i)
@@ -523,7 +624,9 @@ std::vector<StartMenu::Row> StartMenu::AllApps() const
     return out;
 }
 
-int StartMenu::TileIconPx(float scale) { return int(std::lround(kIcon * scale * 1.1f)); }
+// The largest size's icons, for the read-ahead before the menu knows its own
+// (main.cpp): every icon is read once at that size and drawn smaller as needed.
+int StartMenu::TileIconPx(float scale) { return int(std::lround(kStartIcons[StartLayout::kSizes - 1].icon * scale * 1.1f)); }
 
 int StartMenu::Pages() const
 {
@@ -665,7 +768,9 @@ void StartMenu::Paint(Canvas& c)
     glide(pageShown_, float(page_), 14, 0.002f);
     glide(folderPageShown_, float(folderPage_), 14, 0.002f);
     // Another size: the panel and the capsule spring to it, from the bottom left corner.
-    const D2D1_SIZE_F target = SizeFor(shown_);
+    // The window is the largest grid that fits (Size), so either size may grow
+    // inside it; only the panel springs.
+    const D2D1_SIZE_F target = PanelSize();
     const float targetH = target.height - kGap - barH_;
     bool resizing = false;
     if (panelW_ != target.width || mainH_ != targetH || panelV_ != 0 || mainV_ != 0) {
@@ -805,6 +910,9 @@ void StartMenu::PaintSearch(Canvas& c, const Theme& t)
     hits_.push_back({b, L"allapps"});
 }
 
+// `px` is always the largest icon size (IconPx): one bitmap per app serves
+// every icon size, drawn into `r` at the size asked for. Changing the size
+// therefore never reads an icon file or waits on the catalog.
 void StartMenu::DrawIcon(Canvas& c, const std::wstring& id, int px, D2D1_RECT_F r, float radius)
 {
     static const IconImage kNone;
@@ -837,28 +945,36 @@ void StartMenu::PaintTileFace(Canvas& c, const Theme& t, const Tile& tile, D2D1_
     }
     // A carried app over it: it opens up to take it (a folder of the two).
     float into = Hover(c, id + L"#into", target);
-    float cx = (r.left + r.right) / 2, iy = r.top + 8;
-    D2D1_RECT_F ir = D2D1::RectF(cx - kIcon / 2, iy, cx + kIcon / 2, iy + kIcon);
-    c.BeginGroup(1, pressed ? 0.94f : 1 + 0.08f * hv + 0.1f * into, cx, iy + kIcon, 0, -2 * hv);
+    const float icon = IconSize(), ch = r.bottom - r.top;
+    // The icon and the name under it, as one block, centred in the cell. The
+    // name grows with the icon, so the block keeps its proportions.
+    const float labelH = LabelH(), block = icon + 4 + labelH;
+    float cx = (r.left + r.right) / 2, iy = r.top + std::max(6.f, (ch - block) / 2);
+    D2D1_RECT_F ir = D2D1::RectF(cx - icon / 2, iy, cx + icon / 2, iy + icon);
+    c.BeginGroup(1, pressed ? 0.94f : 1 + 0.08f * hv + 0.1f * into, cx, iy + icon, 0, -2 * hv);
     if (into > 0.01f) {
         D2D1_RECT_F ring = D2D1::RectF(ir.left - 5, ir.top - 5, ir.right + 5, ir.bottom + 5);
         c.Fill(ring, 15, Alpha(t.hover, into));
         c.Stroke(ring, 15, Alpha(t.accent, 0.8f * into), 1.5f);
     }
     if (tile.folder) {
-        // A folder: a plate with its first four apps, small.
+        // A folder: a plate with its first four apps, each a quarter of the cover.
+        // Their icons are the tiles' own, read ahead (SetStartIds): scaled down,
+        // not fetched again.
         c.Fill(ir, 11, t.cardHot);
-        const float m = 14, gap = 3, pad = (kIcon - 2 * m - gap) / 2;
-        const int px = int(std::lround(m * c.scale * 1.1f));
+        const float gap = 3, m = (icon - gap) / 2 - 2, pad = (icon - 2 * m - gap) / 2;
+        const int px = IconPx();
         for (size_t k = 0; k < std::min<size_t>(4, tile.apps.size()); ++k) {
             float x = ir.left + pad + float(k % 2) * (m + gap), y = ir.top + pad + float(k / 2) * (m + gap);
             DrawIcon(c, tile.apps[k].id, px, D2D1::RectF(x, y, x + m, y + m), 4);
         }
     } else {
-        DrawIcon(c, tile.app.id, TileIconPx(c.scale), ir, 10);
+        DrawIcon(c, tile.app.id, IconPx(), ir, 10);
     }
     c.EndGroup();
-    c.Text(tile.name, D2D1::RectF(r.left + 2, r.top + 52, r.right - 2, r.bottom + 2), 11.5f, t.text, DWRITE_FONT_WEIGHT_NORMAL, 1, true);
+    // The name under the icon, in the room the cell leaves below it; the type
+    // follows the icon's size.
+    c.Text(tile.name, D2D1::RectF(r.left + 2, ir.bottom + 4, r.right - 2, r.bottom + 2), LabelSize(), t.text, DWRITE_FONT_WEIGHT_NORMAL, 1, true);
 }
 
 // The tiles, cols x rows per page; pages slide sideways. Tiles glide to new
@@ -874,7 +990,8 @@ void StartMenu::PaintTiles(Canvas& c, const Theme& t, float shown)
         return;
     }
     const int per = PerPage();
-    c.Clip(D2D1::RectF(0, kListTop - 4, w, std::min(kGridTop + float(rows_) * kCellH, MainRect().bottom - kGridFoot) + 4));
+    const float cw = CellW(), ch = CellH();
+    c.Clip(D2D1::RectF(0, kListTop - 4, w, std::min(kGridTop + float(rows_) * ch, MainRect().bottom - kGridFoot) + 4));
     for (int slot = 0; slot < int(order.size()); ++slot) {
         const int i = order[size_t(slot)];
         if (i < 0)
@@ -890,9 +1007,9 @@ void StartMenu::PaintTiles(Canvas& c, const Theme& t, float shown)
                 c.Continue();
         }
         const float x = p.x - pageShown_ * w, y = p.y;
-        if (x + kCellW < 0 || x > w)
+        if (x + cw < 0 || x > w)
             continue;
-        D2D1_RECT_F r = D2D1::RectF(x, y, x + kCellW, y + kCellH);
+        D2D1_RECT_F r = D2D1::RectF(x, y, x + cw, y + ch);
         float e = motion::EaseOut(float((now - stageMs_ - kStaggerMs * std::min(slot % per, 18)) / kStageMs));
         if (e < 1)
             c.Continue();
@@ -1188,15 +1305,15 @@ void StartMenu::PaintFolder(Canvas& c, const Theme& t, D2D1_RECT_F card, float s
                 c.Continue();
         }
         const float x = p.x - folderPageShown_ * pageW;
-        if (x + kCellW < full.left || x > full.right)
+        if (x + CellW() < full.left || x > full.right)
             continue;
-        D2D1_RECT_F r = D2D1::RectF(x, p.y, x + kCellW, p.y + kCellH);
+        D2D1_RECT_F r = D2D1::RectF(x, p.y, x + CellW(), p.y + CellH());
         const std::wstring id = L"fapp:" + std::to_wstring(i);
         // Opening, the apps pop up one after another.
         const float e = folderClosing_ ? 1.f : float((c.now - folderMs_ - 70 - kFolderAppStaggerMs * std::min(slot % per, 12)) / kFolderAppMs);
         if (e < 1)
             c.Continue();
-        c.BeginGroup(motion::EaseOut(e * 1.4f), 0.6f + 0.4f * motion::EaseOutBack(e, 1.6f), (r.left + r.right) / 2, r.top + 8 + kIcon / 2);
+        c.BeginGroup(motion::EaseOut(e * 1.4f), 0.6f + 0.4f * motion::EaseOutBack(e, 1.6f), (r.left + r.right) / 2, (r.top + r.bottom) / 2);
         PaintTileFace(c, t, Tile{app.id, app.name, app, {}, false}, r, id, i == sel_, false);
         c.EndGroup();
         if (!drag_.on && !folderClosing_ && slot / per == folderPage_)
@@ -1225,8 +1342,8 @@ void StartMenu::PaintDragged(Canvas& c, const Theme& t)
             return;
         tile = tiles_[size_t(drag_.from)];
     }
-    D2D1_RECT_F r = D2D1::RectF(drag_.x - drag_.grabX, drag_.y - drag_.grabY, drag_.x - drag_.grabX + kCellW, drag_.y - drag_.grabY + kCellH);
-    c.BeginGroup(0.95f, 1.08f, (r.left + r.right) / 2, r.top + 8 + kIcon / 2);
+    D2D1_RECT_F r = D2D1::RectF(drag_.x - drag_.grabX, drag_.y - drag_.grabY, drag_.x - drag_.grabX + CellW(), drag_.y - drag_.grabY + CellH());
+    c.BeginGroup(0.95f, 1.08f, (r.left + r.right) / 2, (r.top + r.bottom) / 2);
     PaintTileFace(c, t, tile, r, L"#carried", false, false);
     c.EndGroup();
 }
@@ -1360,14 +1477,15 @@ void StartMenu::OpenFolder(int tile)
         return;
     // The card grows out of the folder's icon when the grid shows it, else out of the panel's middle.
     const D2D1_RECT_F card = FolderRect();
+    const float icon = IconSize();
     const float mx = (card.left + card.right) / 2, my = (card.top + card.bottom) / 2;
-    folderFrom_ = D2D1::RectF(mx - kIcon / 2, my - kIcon / 2, mx + kIcon / 2, my + kIcon / 2);
+    folderFrom_ = D2D1::RectF(mx - icon / 2, my - icon / 2, mx + icon / 2, my + icon / 2);
     const std::vector<int> order = Order();
     if (auto it = std::find(order.begin(), order.end(), tile); it != order.end() && !Listing()) {
         D2D1_RECT_F cell = Cell(int(it - order.begin()));
-        const float x = cell.left - float(page_) * W(), cx = x + kCellW / 2;
-        if (x >= 0 && x + kCellW <= W())
-            folderFrom_ = D2D1::RectF(cx - kIcon / 2, cell.top + 8, cx + kIcon / 2, cell.top + 8 + kIcon);
+        const float x = cell.left - float(page_) * W(), cx = x + CellW() / 2;
+        if (x >= 0 && x + CellW() <= W())
+            folderFrom_ = D2D1::RectF(cx - icon / 2, cell.top + 8, cx + icon / 2, cell.top + 8 + icon);
     }
     if (folder_ != tile)
         folderGrow_ = folderV_ = 0;
@@ -1394,9 +1512,10 @@ void StartMenu::CloseFolder()
     const std::vector<int> order = Order();
     if (auto it = std::find(order.begin(), order.end(), folder_); it != order.end() && !Listing()) {
         D2D1_RECT_F cell = Cell(int(it - order.begin()));
-        const float x = cell.left - float(page_) * W(), cx = x + kCellW / 2;
-        if (x >= 0 && x + kCellW <= W())
-            folderFrom_ = D2D1::RectF(cx - kIcon / 2, cell.top + 8, cx + kIcon / 2, cell.top + 8 + kIcon);
+        const float icon = IconSize();
+        const float x = cell.left - float(page_) * W(), cx = x + CellW() / 2;
+        if (x >= 0 && x + CellW() <= W())
+            folderFrom_ = D2D1::RectF(cx - icon / 2, cell.top + 8, cx + icon / 2, cell.top + 8 + icon);
     }
     folderClosing_ = true;
     sel_ = -1;
@@ -1523,7 +1642,7 @@ void StartMenu::UpdateDrag(POINT client)
         const D2D1_RECT_F card = FolderRect();
         cols = FolderCols();
         rows = FolderRows();
-        x0 = (card.left + card.right - float(cols) * kCellW) / 2;
+        x0 = (card.left + card.right - float(cols) * CellW()) / 2;
         top = card.top + kFolderHead;
         pageW = card.right - card.left;
         page = folderPage_;
@@ -1537,11 +1656,12 @@ void StartMenu::UpdateDrag(POINT client)
     }
     (void)pageW;
     const float lx = drag_.x - x0, ly = drag_.y - top;
-    const int col = std::clamp(int(std::floor(lx / kCellW)), 0, cols - 1), row = std::clamp(int(std::floor(ly / kCellH)), 0, rows - 1);
+    const float cw = CellW(), ch = CellH(), icon = IconSize();
+    const int col = std::clamp(int(std::floor(lx / cw)), 0, cols - 1), row = std::clamp(int(std::floor(ly / ch)), 0, rows - 1);
     const int slot = page * cols * rows + row * cols + col;
     const std::vector<int> order = drag_.inFolder ? FolderOrder() : Order();
-    const float cx = x0 + float(col) * kCellW + kCellW / 2, iy = top + float(row) * kCellH + 8;
-    const bool overIcon = std::fabs(drag_.x - cx) < kIcon * 0.55f && drag_.y > iy - 6 && drag_.y < iy + kIcon + 6;
+    const float cx = x0 + float(col) * cw + cw / 2, cy = top + float(row) * ch + ch / 2;
+    const bool overIcon = std::fabs(drag_.x - cx) < icon * 0.55f && std::fabs(drag_.y - cy) < icon * 0.75f;
     const int occupant = slot < int(order.size()) ? order[size_t(slot)] : -1;
     // Onto another tile: a folder of the two (or into that folder). Folders do not go into folders.
     const bool carriesFolder = !drag_.fromFolder && tiles_[size_t(drag_.from)].folder;
@@ -1562,8 +1682,8 @@ void StartMenu::UpdateDrag(POINT client)
         }
     }
     // Resting beside the grid turns the page.
-    const bool level = drag_.y > top - 10 && drag_.y < top + float(rows) * kCellH;
-    const int edge = !level ? 0 : drag_.x < x0 - 4 ? -1 : drag_.x > x0 + float(cols) * kCellW + 4 ? 1 : 0;
+    const bool level = drag_.y > top - 10 && drag_.y < top + float(rows) * ch;
+    const int edge = !level ? 0 : drag_.x < x0 - 4 ? -1 : drag_.x > x0 + float(cols) * cw + 4 ? 1 : 0;
     if (edge != drag_.edge) {
         drag_.edge = edge;
         drag_.edgeMs = now;
@@ -1702,19 +1822,22 @@ void StartMenu::Resize(POINT screen)
 {
     // The size nearest to where the corner is pulled (of those the screen has room for).
     const float s = surface_.Scale();
-    const D2D1_SIZE_F from = SizeFor(sizeStart_);
+    const D2D1_SIZE_F from = SizeFor(sizeStart_, layout_.icon);
     const float w = from.width + float(screen.x - sizeFrom_.x) / s, h = from.height + float(sizeFrom_.y - screen.y) / s;
-    int best = shown_;
+    int best = grid_;
     float nearest = 1e9f;
-    for (int size = 0; size <= room_; ++size) {
-        const D2D1_SIZE_F z = SizeFor(size);
+    for (int grid = 0; grid <= room_; ++grid) {
+        const D2D1_SIZE_F z = SizeFor(grid, layout_.icon);
         if (float d = std::hypot(z.width - w, z.height - h); d < nearest) {
             nearest = d;
-            best = size;
+            best = grid;
         }
     }
-    if (best != shown_)
-        SetSize(best);
+    if (best != grid_) {
+        const int preferred = layout_.size;
+        SetSize(best, layout_.icon);
+        layout_.size = preferred; // the grip previews; EndResize commits the choice
+    }
 }
 
 void StartMenu::EndResize()
@@ -1724,8 +1847,8 @@ void StartMenu::EndResize()
     sizing_ = false;
     if (GetCapture() == surface_.Hwnd())
         ReleaseCapture();
-    if (shown_ != sizeStart_) {
-        layout_.size = shown_;
+    if (grid_ != sizeStart_) {
+        layout_.size = grid_;
         SaveStartLayout(layout_);
         Log(L"start: sized to %d x %d tiles", cols_, rows_);
         if (onSize)
@@ -1869,9 +1992,15 @@ void StartMenu::ContextMenu(const std::wstring& id, POINT screen)
     } else if (!folderKey.empty()) {
         entries = {{L"打开", kOpen}, {L"重命名", kRename}, {L"解散文件夹", kUngroup}};
     } else if (id.empty() && !Listing() && folder_ < 0) {
-        static const wchar_t* const kNames[] = {L"小", L"中", L"大"};
-        for (int size = 0; size <= room_; ++size)
-            entries.push_back({kNames[size], kSize + size, size == shown_});
+        // Two choices of their own: how much the menu holds, and how large its icons are.
+        static const wchar_t* const kNames[] = {L"小", L"中", L"大", L"极大"};
+        entries.push_back({L"菜单大小", 0, false, true, true});
+        for (int grid = 0; grid <= room_; ++grid)
+            entries.push_back({kNames[grid], kSize + grid, grid == grid_});
+        entries.push_back({});
+        entries.push_back({L"图标大小", 0, false, true, true});
+        for (int icon = 0; icon < StartLayout::kSizes; ++icon)
+            entries.push_back({kNames[icon], kIcon + icon, icon == layout_.icon});
         if (!layout_.hidden.empty()) {
             entries.push_back({});
             entries.push_back({L"显示隐藏的应用", kShowHidden});
@@ -1962,12 +2091,22 @@ void StartMenu::ContextMenu(const std::wstring& id, POINT screen)
                    case kSize:
                    case kSize + 1:
                    case kSize + 2:
-                       SetSize(cmd - kSize);
-                       layout_.size = shown_;
+                   case kSize + 3:
+                       SetSize(cmd - kSize, layout_.icon);
                        SaveStartLayout(layout_);
                        Log(L"start: sized to %d x %d tiles", cols_, rows_);
                        if (onSize)
                            onSize(SizeName());
+                       break;
+                   case kIcon:
+                   case kIcon + 1:
+                   case kIcon + 2:
+                   case kIcon + 3:
+                       SetSize(layout_.size, cmd - kIcon);
+                       SaveStartLayout(layout_);
+                       Log(L"start: icons %.0f DIP (%d px), %d x %d tiles", IconSize(), IconPx(), cols_, rows_);
+                       if (onIcon)
+                           onIcon(IconSizeName());
                        break;
                    case kReset:
                        layout_.custom = false;
@@ -2173,7 +2312,7 @@ bool StartMenu::Message(UINT m, WPARAM w, LPARAM l, LRESULT& result)
         if (pressed_ == L"resize") {
             sizing_ = true;
             GetCursorPos(&sizeFrom_);
-            sizeStart_ = shown_;
+            sizeStart_ = grid_;
             SetCapture(surface_.Hwnd());
             return true;
         }

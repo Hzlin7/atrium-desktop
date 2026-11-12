@@ -41,6 +41,8 @@ void Settings::Clamp()
     c(iconSize, 16, 64, d.iconSize);
     c(magnify, 1, 2, d.magnify);
     c(notifyTimeout, 3, 30, d.notifyTimeout);
+    c(nearEnter, 2, 160, d.nearEnter);
+    c(nearLeave, 2, 200, d.nearLeave);
     c(dockDisplayDelay, 100, 2000, d.dockDisplayDelay);
     tint &= 0xFFFFFF;
     if (textColor != L"light" && textColor != L"dark")
@@ -49,8 +51,10 @@ void Settings::Clamp()
         autoHide = L"fullscreen";
     if (statusStyle != L"icons")
         statusStyle = L"ring";
-    if (startSize != L"small" && startSize != L"medium" && startSize != L"large")
+    if (startSize != L"small" && startSize != L"medium" && startSize != L"large" && startSize != L"xlarge")
         startSize.clear();
+    if (startIcon != L"small" && startIcon != L"medium" && startIcon != L"large" && startIcon != L"xlarge")
+        startIcon.clear();
     if (dockDisplayMode != L"follow" && dockDisplayMode != L"fixed" && dockDisplayMode != L"all")
         dockDisplayMode = L"primary";
     if (taskbarApps != L"primaryAndWindow" && taskbarApps != L"window")
@@ -86,10 +90,14 @@ std::wstring Settings::ToJson() const
     num(L"iconSize", iconSize);
     num(L"magnify", magnify);
     o.SetNamedValue(L"hoverRise", json::JsonValue::CreateBooleanValue(hoverRise));
+    o.SetNamedValue(L"riseNear", json::JsonValue::CreateBooleanValue(riseNear));
+    o.SetNamedValue(L"magnifyNear", json::JsonValue::CreateBooleanValue(magnifyNear));
     o.SetNamedValue(L"startTray", json::JsonValue::CreateBooleanValue(startTray));
     o.SetNamedValue(L"startStatus", json::JsonValue::CreateBooleanValue(startStatus));
     if (!startSize.empty())
         o.SetNamedValue(L"startSize", json::JsonValue::CreateStringValue(startSize));
+    if (!startIcon.empty())
+        o.SetNamedValue(L"startIcon", json::JsonValue::CreateStringValue(startIcon));
     o.SetNamedValue(L"showClock", json::JsonValue::CreateBooleanValue(showClock));
     o.SetNamedValue(L"showClockSeconds", json::JsonValue::CreateBooleanValue(showClockSeconds));
     o.SetNamedValue(L"showTray", json::JsonValue::CreateBooleanValue(showTray));
@@ -108,6 +116,8 @@ std::wstring Settings::ToJson() const
     o.SetNamedValue(L"taskbarRightPrimaryOnly", json::JsonValue::CreateBooleanValue(taskbarRightPrimaryOnly));
     o.SetNamedValue(L"windowsContextMenu", json::JsonValue::CreateBooleanValue(windowsContextMenu));
     num(L"notifyTimeout", notifyTimeout);
+    num(L"nearEnter", nearEnter);
+    num(L"nearLeave", nearLeave);
     o.SetNamedValue(L"notifyPlacement", json::JsonValue::CreateStringValue(notifyPlacement));
     o.SetNamedValue(L"notifyHideBody", json::JsonValue::CreateBooleanValue(notifyHideBody));
     o.SetNamedValue(L"notifyListener", json::JsonValue::CreateBooleanValue(notifyListener));
@@ -179,10 +189,14 @@ bool Settings::FromJson(const std::wstring& text, const Settings& base, Settings
             v = o.GetNamedBoolean(k);
     };
     flag(L"hoverRise", s.hoverRise);
+    flag(L"riseNear", s.riseNear);
+    flag(L"magnifyNear", s.magnifyNear);
     flag(L"startTray", s.startTray);
     flag(L"startStatus", s.startStatus);
     if (o.HasKey(L"startSize") && o.GetNamedValue(L"startSize").ValueType() == json::JsonValueType::String)
         s.startSize = std::wstring(o.GetNamedString(L"startSize"));
+    if (o.HasKey(L"startIcon") && o.GetNamedValue(L"startIcon").ValueType() == json::JsonValueType::String)
+        s.startIcon = std::wstring(o.GetNamedString(L"startIcon"));
     flag(L"showClock", s.showClock);
     flag(L"showClockSeconds", s.showClockSeconds);
     flag(L"showTray", s.showTray);
@@ -191,6 +205,8 @@ bool Settings::FromJson(const std::wstring& text, const Settings& base, Settings
     flag(L"autoWidth", s.autoWidth);
     flag(L"showRunning", s.showRunning);
     num(L"notifyTimeout", s.notifyTimeout);
+    num(L"nearEnter", s.nearEnter);
+    num(L"nearLeave", s.nearLeave);
     flag(L"notifyHideBody", s.notifyHideBody);
     // Version 1 saved the old default (off) along with everything else; from
     // version 2 the notifications are on unless turned off since.

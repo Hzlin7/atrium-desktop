@@ -38,13 +38,20 @@ internal sealed class BarSettings
     public double IconSize { get; set; } = 30;
     public double Magnify { get; set; } = 1.7;         // icon scale under the pointer, 1 = off
     public bool HoverRise { get; set; }               // glass follows the magnification wave (off unless chosen)
+    public bool RiseNear { get; set; } = true;         // and for a pointer resting just above the bar
+    public bool MagnifyNear { get; set; } = true;      // the icons magnify for that pointer too, on its own switch
+    public double NearEnter { get; set; } = 40;        // DIP above the glass where that starts
+    public double NearLeave { get; set; } = 48;        // and where it lets go again
     public bool AutoWidth { get; set; } = true;
     public bool ShowClock { get; set; } = true;
     public bool ShowClockSeconds { get; set; }        // seconds after the minutes (off unless chosen)
     public bool ShowTray { get; set; } = true;
     public bool StartTray { get; set; } = true;        // the tray's button in the start menu
     public bool StartStatus { get; set; } = true;      // its network, volume and battery buttons
-    public string StartSize { get; set; } = "";        // small | medium | large; empty: not known yet (the core fills it in)
+    // The start menu's size and its icons' size: small | medium | large | xlarge;
+    // empty: not known yet (the core fills it in from start.json).
+    public string StartSize { get; set; } = "";
+    public string StartIcon { get; set; } = "";
     public bool ShowStatus { get; set; } = true;
     public bool ShowNotifications { get; set; } = true;
     public bool ShowRunning { get; set; } = true;
@@ -132,6 +139,10 @@ internal sealed class BarSettings
             ["iconSize"] = IconSize,
             ["magnify"] = Magnify,
             ["hoverRise"] = HoverRise,
+            ["riseNear"] = RiseNear,
+            ["magnifyNear"] = MagnifyNear,
+            ["nearEnter"] = NearEnter,
+            ["nearLeave"] = NearLeave,
             ["showClock"] = ShowClock,
             ["showClockSeconds"] = ShowClockSeconds,
             ["showTray"] = ShowTray,
@@ -174,6 +185,8 @@ internal sealed class BarSettings
         };
         if (StartSize.Length > 0)
             o["startSize"] = StartSize;
+        if (StartIcon.Length > 0)
+            o["startIcon"] = StartIcon;
         if (Pins != null)
         {
             var a = new JsonArray();
@@ -214,12 +227,17 @@ internal sealed class BarSettings
             s.Tint = tint;
         bool Flag(string k, bool d) => o?[k] is JsonValue v && v.TryGetValue(out bool b) ? b : d;
         s.HoverRise = Flag("hoverRise", f.HoverRise);
+        s.RiseNear = Flag("riseNear", f.RiseNear);
+        s.MagnifyNear = Flag("magnifyNear", f.MagnifyNear);
+        s.NearEnter = Math.Clamp(Num("nearEnter", f.NearEnter), 2, 200);
+        s.NearLeave = Math.Clamp(Num("nearLeave", f.NearLeave), 2, 240);
         s.ShowClock = Flag("showClock", f.ShowClock);
         s.ShowClockSeconds = Flag("showClockSeconds", f.ShowClockSeconds);
         s.ShowTray = Flag("showTray", f.ShowTray);
         s.StartTray = Flag("startTray", f.StartTray);
         s.StartStatus = Flag("startStatus", f.StartStatus);
-        s.StartSize = o?["startSize"] is JsonValue ss0 && ss0.TryGetValue(out string? size) && size is "small" or "medium" or "large" ? size! : f.StartSize;
+        s.StartSize = o?["startSize"] is JsonValue ss0 && ss0.TryGetValue(out string? size) && size is "small" or "medium" or "large" or "xlarge" ? size! : f.StartSize;
+        s.StartIcon = o?["startIcon"] is JsonValue si0 && si0.TryGetValue(out string? iconSize) && iconSize is "small" or "medium" or "large" or "xlarge" ? iconSize! : f.StartIcon;
         s.ShowStatus = Flag("showStatus", f.ShowStatus);
         s.ShowNotifications = Flag("showNotifications", f.ShowNotifications);
         s.AutoWidth = Flag("autoWidth", f.AutoWidth);
@@ -287,9 +305,11 @@ internal sealed class BarSettings
 
     public bool SameAs(BarSettings o) =>
         SameMaterial(o) && Preset == o.Preset && CornerRadius == o.CornerRadius && Width == o.Width && Height == o.Height &&
-        Margin == o.Margin && IconSize == o.IconSize && Magnify == o.Magnify && HoverRise == o.HoverRise && AutoWidth == o.AutoWidth && ShowClock == o.ShowClock &&
+        Margin == o.Margin && IconSize == o.IconSize && Magnify == o.Magnify && HoverRise == o.HoverRise && RiseNear == o.RiseNear &&
+        MagnifyNear == o.MagnifyNear && NearEnter == o.NearEnter && NearLeave == o.NearLeave && AutoWidth == o.AutoWidth && ShowClock == o.ShowClock &&
         ShowClockSeconds == o.ShowClockSeconds &&
-        ShowTray == o.ShowTray && StartTray == o.StartTray && StartStatus == o.StartStatus && StartSize == o.StartSize && ShowStatus == o.ShowStatus && ShowNotifications == o.ShowNotifications &&
+        ShowTray == o.ShowTray && StartTray == o.StartTray && StartStatus == o.StartStatus && StartSize == o.StartSize && StartIcon == o.StartIcon &&
+        ShowStatus == o.ShowStatus && ShowNotifications == o.ShowNotifications &&
         ShowRunning == o.ShowRunning && TextColor == o.TextColor && AutoHide == o.AutoHide && StatusStyle == o.StatusStyle && NotifyTimeout == o.NotifyTimeout && NotifyHideBody == o.NotifyHideBody &&
         NotifyListener == o.NotifyListener && NotifyWeChat == o.NotifyWeChat && NotifyFeishu == o.NotifyFeishu && Bar == o.Bar && Widgets == o.Widgets &&
         WidgetsOnRight == o.WidgetsOnRight && WidgetBackdrop == o.WidgetBackdrop && StageManager == o.StageManager && StageOnRight == o.StageOnRight &&

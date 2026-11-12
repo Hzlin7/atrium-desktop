@@ -59,6 +59,12 @@ public sealed partial class MainWindow : Window
         new("dock", "悬停放大", 100, 200, 5, "%",
             s => s.Magnify * 100, (s, v) => s.Magnify = v / 100, false),
 
+        // The band above the bar that answers the pointer ahead of time (riseNear, magnifyNear).
+        new("near", "进入距离", 4, 160, 2, "px",
+            s => s.NearEnter, (s, v) => s.NearEnter = v, false),
+        new("near", "离开距离", 4, 200, 2, "px",
+            s => s.NearLeave, (s, v) => s.NearLeave = v, false),
+
         new("notify", "停留时间", 3, 30, 1, "s",
             s => s.NotifyTimeout, (s, v) => s.NotifyTimeout = v, false),
     };
@@ -164,7 +170,7 @@ public sealed partial class MainWindow : Window
         // `--page widgets` (the widgets' menu): open on that page.
         var args = Environment.GetCommandLineArgs();
         int page = Array.IndexOf(args, "--page") is int i && i >= 0 && i + 1 < args.Length
-            ? args[i + 1] switch { "dock" => 2, "notify" => 3, "widgets" => 4, "stage" => 5, "displays" => 6, "system" => 7, "about" => 9,
+            ? args[i + 1] switch { "shape" => 1, "dock" => 2, "notify" => 3, "widgets" => 4, "stage" => 5, "displays" => 6, "system" => 7, "about" => 9,
                                  "start" => 10, "tray" => 11, "status" => 12, "clock" => 13, _ => 0 } : 0;
         SelectPage(page);
         _ = ConnectAndLoadAsync();
@@ -309,6 +315,7 @@ public sealed partial class MainWindow : Window
         {
             ["clarity"] = (ClarityTiles, true, false), ["edge"] = (EdgeRows, false, true), ["light"] = (LightRows, false, true),
             ["size"] = (SizeRows, false, true), ["width"] = (WidthRows, false, true), ["dock"] = (DockRows, false, true), ["notify"] = (NotifyRows, true, true),
+            ["near"] = (NearRows, false, true),
         };
         var placed = new Dictionary<string, int>();
         foreach (var d in Sliders)
@@ -760,11 +767,15 @@ public sealed partial class MainWindow : Window
         TraySwitch.IsOn = _current.ShowTray;
         StartTraySwitch.IsOn = _current.StartTray;
         StartStatusSwitch.IsOn = _current.StartStatus;
-        (_current.StartSize switch { "small" => StartSmall, "large" => StartLarge, _ => StartMedium }).IsChecked = true;
+        (_current.StartSize switch { "small" => StartSmall, "large" => StartLarge, "xlarge" => StartXLarge, _ => StartMedium }).IsChecked = true;
+        (_current.StartIcon switch { "small" => StartIconSmall, "large" => StartIconLarge, "xlarge" => StartIconXLarge, _ => StartIconMedium }).IsChecked = true;
         StatusSwitch.IsOn = _current.ShowStatus;
         NotificationsSwitch.IsOn = _current.ShowNotifications;
         AutoWidthSwitch.IsOn = _current.AutoWidth;
         HoverRiseSwitch.IsOn = _current.HoverRise;
+        RiseNearSwitch.IsOn = _current.RiseNear;
+        MagnifyNearSwitch.IsOn = _current.MagnifyNear;
+        UpdateRiseNearDependent();
         RunningSwitch.IsOn = _current.ShowRunning;
         HideBodySwitch.IsOn = _current.NotifyHideBody;
         (_current.NotifyPlacement == "topRight" ? NotifyAtTopRight : NotifyAtDock).IsChecked = true;
@@ -912,6 +923,28 @@ public sealed partial class MainWindow : Window
     {
         if (_loading) return;
         _current.HoverRise = HoverRiseSwitch.IsOn;
+        UpdateRiseNearDependent();
+        Changed();
+    }
+
+    // The early rise only means something while the glass rises with the wave at all.
+    private void UpdateRiseNearDependent()
+    {
+        RiseNearSwitch.Opacity = _current.HoverRise ? 1 : 0.45;
+        RiseNearSwitch.IsHitTestVisible = _current.HoverRise;
+    }
+
+    private void OnRiseNearToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _current.RiseNear = RiseNearSwitch.IsOn;
+        Changed();
+    }
+
+    private void OnMagnifyNearToggled(object sender, RoutedEventArgs e)
+    {
+        if (_loading) return;
+        _current.MagnifyNear = MagnifyNearSwitch.IsOn;
         Changed();
     }
 
@@ -1052,6 +1085,13 @@ public sealed partial class MainWindow : Window
     {
         if (_loading || sender is not RadioButton { Tag: string tag }) return;
         _current.StartSize = tag;
+        Changed();
+    }
+
+    private void OnStartIconSizeChecked(object sender, RoutedEventArgs e)
+    {
+        if (_loading || sender is not RadioButton { Tag: string tag }) return;
+        _current.StartIcon = tag;
         Changed();
     }
 

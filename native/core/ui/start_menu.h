@@ -9,7 +9,7 @@
 // arranges them (shell/start_layout.h): dragged to another place or page, onto
 // another app (a folder of the two) or into a folder. Folders open in a small
 // card, take a name and give their apps back. The grip in the panel's top
-// right corner (or the menu of the panel) picks one of three sizes; the
+// right corner (or the menu of the panel) picks one of four sizes; the
 // window keeps the largest that fits and the pieces of glass spring to the
 // size inside it. Typing searches all apps and folders, by name or by
 // initials ("wx" for 微信); the button next to the field lists them all from
@@ -47,7 +47,8 @@ public:
     ULONGLONG LastClosed() const { return lastClosed_; }
     void Refresh(); // an icon or the catalog changed
     void SetStatus(const SystemStatus& status);
-    static int TileIconPx(float scale); // the tiles' icon size (AppCatalog::PrefetchStartIcons)
+    static int TileIconPx(float scale); // the largest icon size (AppCatalog::PrefetchStartIcons); every size draws from it
+    int IconPx() const;                 // the same, in pixels on this monitor: what an icon is read at
     HWND Hwnd() const { return surface_.Hwnd(); }
     // Corner radius (DIP), the bar's; the panel uses it, the capsule is round like the bar.
     void SetRadius(float dip) { radius_ = dip; surface_.SetRadius(dip); }
@@ -57,10 +58,14 @@ public:
     void SetShowTray(bool on) { showTray_ = on; }
     // The network, volume and battery buttons in the capsule (setting startStatus).
     void SetShowStatus(bool on) { showStatus_ = on; }
-    // The menu's size (setting startSize: small, medium, large; empty leaves it as it is).
+    // The menu's size and its icons' size (settings startSize and startIcon: small,
+    // medium, large, xlarge; empty leaves the menu as it is).
     void SetPreferredSize(const std::wstring& name);
+    void SetPreferredIcon(const std::wstring& name);
     std::wstring SizeName() const;
-    std::function<void(const std::wstring& name)> onSize; // the user picked another size in the menu
+    std::wstring IconSizeName() const;
+    std::function<void(const std::wstring& name)> onSize;  // the user picked another size in the menu
+    std::function<void(const std::wstring& name)> onIcon;  // or another icon size
 
     std::function<void(const PinnedApp&)> onPin;            // pin to the bar (the dock)
     std::function<void(const std::wstring& what)> onSystem; // "network", "volume", "battery", "tray", "account"
@@ -139,12 +144,20 @@ private:
     // 0, 0; in the window it sits OffsetY() lower, on the window's bottom edge.
     float W() const; // the panel and the capsule, as shown (springing to a new size)
     float H() const;
-    D2D1_SIZE_F SizeFor(int size) const; // a size's, StartLayout::kCols/kRows
-    D2D1_SIZE_F Size() const;            // the window's: the largest size that fits
-    bool Fits(int size) const;
+    // The size shown: a tile's icon, its cell (the name under the icon), and the grid they make.
+    float IconSize() const;
+    float CellW() const;
+    float CellH() const;
+    float LabelSize() const; // the name under the icon, in step with it
+    float LabelH() const;    // the room that name takes in the cell
+    D2D1_SIZE_F SizeFor(int grid, int icons) const; // the tables in the .cpp
+    D2D1_SIZE_F Size() const;                       // the window's: the largest grid that fits
+    D2D1_SIZE_F PanelSize() const;                  // the panel's, inside it: the size chosen
+    bool Fits(int grid, int icons) const;
+    void UpdateRoom();                              // the largest grid that fits, at these icons
     float OffsetY() const;
     LONG OffsetPx() const;
-    void SetSize(int size); // the grid's, the pieces spring to it
+    void SetSize(int grid, int icons); // the menu's size, and its icons'; the pieces spring to them
     D2D1_RECT_F MainRect() const;
     D2D1_RECT_F ShelfRect() const;
     D2D1_RECT_F PowerRect() const; // the power card when fully open
@@ -200,8 +213,8 @@ private:
     TaskModel& tasks_;
     AppCatalog& catalog_;
     StartLayout layout_;
-    int cols_ = 0, rows_ = 0;   // the grid of the size shown (layout_.size, unless the screen is too small)
-    int shown_ = 0, room_ = 0;  // that size; the largest that fits (the window's)
+    int cols_ = 0, rows_ = 0;   // the grid shown (layout_.size, unless the screen is too small)
+    int grid_ = 0, room_ = 0;   // the menu's size; the largest that fits (the window's)
     float panelW_ = 0, panelV_ = 0, mainH_ = 0, mainV_ = 0; // the panel's width and height, springing (DIP, DIP/s)
     std::vector<CatalogApp> apps_, pins_;
     std::vector<Tile> tiles_;

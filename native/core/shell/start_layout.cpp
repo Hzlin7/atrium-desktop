@@ -28,6 +28,17 @@ std::wstring Str(const json::JsonObject& o, const wchar_t* key)
     return o.HasKey(key) && o.GetNamedValue(key).ValueType() == json::JsonValueType::String ? std::wstring(o.GetNamedString(key)) : std::wstring();
 }
 
+// The sizes as start.json names them, smallest first.
+constexpr const wchar_t* kSizeKeys[StartLayout::kSizes] = {L"small", L"medium", L"large", L"xlarge"};
+
+int SizeOf(const std::wstring& name)
+{
+    for (int i = 0; i < StartLayout::kSizes; ++i)
+        if (name == kSizeKeys[i])
+            return i;
+    return StartLayout::kMedium;
+}
+
 // GB2312 orders its level-one characters by pinyin: where each initial's run starts.
 constexpr struct {
     unsigned code;
@@ -61,6 +72,7 @@ wchar_t PinyinInitial(wchar_t ch)
 void StartLayout::Clamp()
 {
     size = std::clamp(size, 0, kSizes - 1);
+    icon = std::clamp(icon, 0, kSizes - 1);
     // A folder keeps at least one app; an app appears once.
     std::vector<std::wstring> seen;
     auto fresh = [&](const std::wstring& id) {
@@ -109,13 +121,15 @@ StartLayout LoadStartLayout()
         return layout;
     }
     const std::wstring size = Str(o, L"size");
-    layout.size = size == L"small" ? 0 : size == L"large" ? 2 : StartLayout::kMedium;
+    layout.size = SizeOf(size);
+    layout.icon = SizeOf(Str(o, L"icon"));
     if (o.GetNamedNumber(L"version", 1) < 2) {
         // Version 1: sizes a step smaller (5 x 3, 7 x 3, 9 x 4), or before them the tiles across and down.
         if (!size.empty())
             layout.size = size == L"large" ? 1 : 0;
         else if (o.HasKey(L"cols") && o.HasKey(L"rows"))
             layout.size = o.GetNamedNumber(L"cols", 7) >= 9 || o.GetNamedNumber(L"rows", 3) >= 4 ? 1 : 0;
+        layout.icon = StartLayout::kMedium; // the icons had no size of their own then
     }
     auto tile = [](const json::JsonObject& e) {
         StartTile t{Str(e, L"id"), Str(e, L"name"), {}};
@@ -143,7 +157,8 @@ bool SaveStartLayout(const StartLayout& layout)
 {
     json::JsonObject o;
     o.SetNamedValue(L"version", json::JsonValue::CreateNumberValue(2));
-    o.SetNamedValue(L"size", json::JsonValue::CreateStringValue(layout.size == 0 ? L"small" : layout.size == 2 ? L"large" : L"medium"));
+    o.SetNamedValue(L"size", json::JsonValue::CreateStringValue(kSizeKeys[layout.size]));
+    o.SetNamedValue(L"icon", json::JsonValue::CreateStringValue(kSizeKeys[layout.icon]));
     auto entry = [](const StartTile& t) {
         json::JsonObject e;
         e.SetNamedValue(L"id", json::JsonValue::CreateStringValue(t.id));

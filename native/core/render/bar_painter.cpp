@@ -139,15 +139,22 @@ bool BarPainter::Animate(const BarScene& scene, double nowMs)
         slide(sepX_, scene.separatorX);
     slide(clockX_, (scene.clock.left + scene.clock.right) / 2);
 
-    // Magnification: follows the pointer at once, grows and settles smoothly.
+    // Magnification: follows the pointer at once, grows and settles smoothly. A pointer
+    // resting just above the bar is answered ahead of time too, each on its own switch:
+    // the glass rises to it (riseNear, with hoverRise) and the icons magnify (magnifyNear).
     bool hovering = scene.pointerX >= 0 && scene.dragKey.empty() && scene.magnify > 1.001f;
     mag_ = std::max(1.f, scene.magnify);
     range_ = std::max(1.f, scene.magnifyRange);
     if (hovering)
         centre_ = scene.pointerX;
-    float amount = Approach(amount_, hovering ? 1.f : 0.f, dt, 13);
+    else if (scene.nearX >= 0)
+        centre_ = scene.nearX;
+    float amount = Approach(amount_, hovering || scene.nearMagnify ? 1.f : 0.f, dt, 13);
     moving |= amount != amount_;
     amount_ = amount;
+    float rise = Approach(rise_, hovering || scene.nearRise ? 1.f : 0.f, dt, 13);
+    moving |= rise != rise_;
+    rise_ = rise;
 
     for (auto& [key, m] : motion_)
         m.inScene = false;
@@ -295,8 +302,8 @@ bool BarPainter::Animate(const BarScene& scene, double nowMs)
     frame_.shape = D2D1::RectF(MapX(barL_), scene.bar.top + frame_.slideY, MapX(barR_), scene.bar.bottom + frame_.slideY);
     // Share the icons' wave and easing; its support widens with the stretched bar.
     frame_.waveX = centre_;
-    frame_.waveWidth = range_ * (1 + (mag_ - 1) * amount_ / 2);
-    frame_.waveHeight = scene.magnifyLift * amount_;
+    frame_.waveWidth = range_ * (1 + (mag_ - 1) * rise_ / 2);
+    frame_.waveHeight = scene.magnifyLift * rise_;
     frame_.rippleA = 0;
     if (scene.rippleMs > 0) {
         constexpr double kRippleMs = 720;

@@ -60,6 +60,9 @@ constexpr UINT_PTR kSlideTimer = 4;   // the slide out is over: hide the windows
 constexpr UINT_PTR kPointerTimer = 5; // while covered: watch the pointer
 constexpr UINT_PTR kDisplayTimer = 6; // the shared Dock's cross-display gesture
 constexpr UINT_PTR kCoverTimer = 7;   // windows moved on this monitor: look at what covers it, once for a burst
+constexpr UINT_PTR kNearTimer = 8;    // the pointer coming down onto the bar (hoverRise)
+constexpr UINT kNearMs = 16;
+constexpr float kNearSideDip = 16;    // past the glass's ends, so the approach from the side counts too
 constexpr UINT kCoverMs = 50;
 constexpr UINT kPointerMs = 50;
 constexpr DWORD kLeaveMs = 500;       // a revealed bar goes down this long after the pointer left it
@@ -546,11 +549,16 @@ LRESULT Bar::OnInput(HWND h, UINT m, WPARAM w, LPARAM l)
             if (tucked_ && !slidOut_) {
                 slidOut_ = true;
                 Relayout(); // hides the windows; the render thread rests
+                WatchNear(); // nothing to answer now: let it fall back
             }
             return 0;
         }
         if (w == kPointerTimer) {
             WatchPointer();
+            return 0;
+        }
+        if (w == kNearTimer) {
+            WatchNear();
             return 0;
         }
         break;
@@ -778,6 +786,7 @@ void Bar::Apply(const Settings& s)
     WatchDisplaysIfNeeded();
     Relayout();
     UpdateCover(); // the hide mode may have changed
+    UpdateNearWatch(); // hoverRise may have been turned on or off
 }
 
 // Watching the pointer for the follow mode only with another display to follow it to.
@@ -871,6 +880,7 @@ void Bar::SetVisible(bool visible)
 {
     visible_ = visible;
     Relayout();
+    UpdateNearWatch();
 }
 
 void Bar::Relayout()
@@ -1030,6 +1040,11 @@ void Bar::Relayout()
     // Keep the pointer and the ripple; only the geometry changes. The pointer
     // moves with the window if it was rebuilt at another x.
     scene.pointerX = scene_.pointerX < 0 ? -1 : scene_.pointerX + float(window_.left - x);
+    // The pointer just above the bar: the glass and/or the icons answer it (hoverRise,
+    // riseNear, magnifyNear).
+    scene.nearX = nearX_ < 0 ? -1 : nearX_ + float(window_.left - x);
+    scene.nearRise = nearRise_;
+    scene.nearMagnify = nearMagnify_;
     scene.rippleX = scene_.rippleX + float(window_.left - x);
     scene.rippleY = scene_.rippleY + float(window_.top - y);
     scene.rippleMs = scene_.rippleMs;
@@ -1398,6 +1413,60 @@ void Bar::WatchPointer()
         revealed_ = false;
         leftAt_ = 0;
         UpdateAutoHide();
+    }
+}
+
+// The pointer just above a visible bar: the hover wave answers it before the pointer
+// arrives — the glass rises to it (hoverRise and riseNear) and/or the icons magnify
+// (magnifyNear), each on its own. On the bar itself the mouse moves drive the wave and
+// this leaves it alone.
+void Bar::WatchNear()
+{
+    const float s = scale_;
+    const D2D1_RECT_F g = scene_.bar;
+    const float side = kNearSideDip * s;
+    // The distances are settings (nearEnter / nearLeave, DIP); the hold is never closer
+    // than the start, so a pointer resting on the edge does not flicker in and out.
+    const float enter = std::max(2.f, float(settings_.nearEnter)), leave = std::max(enter, float(settings_.nearLeave));
+    const float reach = (nearOn_ ? leave : enter) * s;
+    const bool wantRise = settings_.hoverRise && settings_.riseNear;
+    const bool wantMagnify = settings_.magnifyNear;
+    float leadX = -1;
+    if (visible_ && !tucked_ && !slidOut_ && settings_.magnify > 1.001f && (wantRise || wantMagnify)) {
+        POINT p{};
+        GetCursorPos(&p);
+        ScreenToClient(input_, &p);
+        const float x = float(p.x), y = float(p.y);
+        if (y < g.top && y >= g.top - reach && x >= g.left - side && x <= g.right + side)
+            leadX = std::clamp(x, g.left, g.right);
+    }
+    nearOn_ = leadX >= 0;
+    const bool rise = nearOn_ && wantRise, magnify = nearOn_ && wantMagnify;
+    if (std::fabs(leadX - nearX_) < 1.f && rise == nearRise_ && magnify == nearMagnify_)
+        return;
+    nearX_ = leadX;
+    nearRise_ = rise;
+    nearMagnify_ = magnify;
+    scene_.nearX = nearX_;
+    scene_.nearRise = nearRise_;
+    scene_.nearMagnify = nearMagnify_;
+    Publish();
+}
+
+// Watched while the bar is on screen; a tick steps aside for a tucked bar by itself.
+void Bar::UpdateNearWatch()
+{
+    if (visible_)
+        SetTimer(input_, kNearTimer, kNearMs, nullptr);
+    else {
+        KillTimer(input_, kNearTimer);
+        if (nearX_ >= 0 || nearRise_ || nearMagnify_) {
+            nearX_ = -1;
+            nearRise_ = nearMagnify_ = nearOn_ = false;
+            scene_.nearX = -1;
+            scene_.nearRise = scene_.nearMagnify = false;
+            Publish();
+        }
     }
 }
 

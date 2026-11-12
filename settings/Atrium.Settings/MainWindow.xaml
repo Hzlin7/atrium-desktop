@@ -583,7 +583,19 @@
                                     <Button Style="{StaticResource ResetButtonStyle}" Tag="size" Click="OnGroupReset" AutomationProperties.Name="恢复尺寸的默认值" />
                                 </Grid>
                                 <StackPanel x:Name="SizeRows" />
-                                <local:ToggleTile x:Name="HoverRiseSwitch" Title="跟随鼠标拱起" SwitchName="背景跟随鼠标拱起" Toggled="OnHoverRiseToggled" Flat="True" />
+                                <local:ToggleTile x:Name="HoverRiseSwitch" Title="跟随鼠标拱起" SwitchName="背景跟随鼠标拱起" Toggled="OnHoverRiseToggled" Flat="True"
+                                                  Note="指针在栏上时玻璃随放大波拱起。" />
+                                <local:ToggleTile x:Name="RiseNearSwitch" Title="栏上方提前拱起" SwitchName="指针在栏上方时提前拱起" Toggled="OnRiseNearToggled" Flat="True"
+                                                  Note="指针停在栏上方（不必进到栏里）时，玻璃先拱起来迎向鼠标；范围在下面“栏上方提前响应”里调。" />
+                                <local:ToggleTile x:Name="MagnifyNearSwitch" Title="栏上方提前放大图标" SwitchName="指针在栏上方时提前放大图标" Toggled="OnMagnifyNearToggled" Flat="True"
+                                                  Note="同上，图标也提前放大；不依赖“跟随鼠标拱起”，它自己就能生效。" />
+                            </StackPanel>
+                            <StackPanel>
+                                <Grid>
+                                    <TextBlock Text="栏上方提前响应" Style="{StaticResource SectionStyle}" />
+                                    <Button Style="{StaticResource ResetButtonStyle}" Tag="near" Click="OnGroupReset" AutomationProperties.Name="恢复提前响应的默认值" />
+                                </Grid>
+                                <StackPanel x:Name="NearRows" />
                             </StackPanel>
                             <StackPanel>
                                 <Grid>
@@ -644,8 +656,20 @@
                                         <RadioButton x:Name="StartSmall" GroupName="startsize" Content="小" Tag="small" Style="{StaticResource SegmentStyle}" Checked="OnStartSizeChecked" />
                                         <RadioButton x:Name="StartMedium" GroupName="startsize" Content="中" Tag="medium" Style="{StaticResource SegmentStyle}" Checked="OnStartSizeChecked" />
                                         <RadioButton x:Name="StartLarge" GroupName="startsize" Content="大" Tag="large" Style="{StaticResource SegmentStyle}" Checked="OnStartSizeChecked" />
+                                        <RadioButton x:Name="StartXLarge" GroupName="startsize" Content="极大" Tag="xlarge" Style="{StaticResource SegmentStyle}" Checked="OnStartSizeChecked" />
                                     </local:SegmentTrack>
                                 </StackPanel>
+                                <StackPanel Style="{StaticResource FlatRowStyle}">
+                                    <TextBlock Text="图标大小" Style="{StaticResource RowTitleStyle}" />
+                                    <local:SegmentTrack>
+                                        <RadioButton x:Name="StartIconSmall" GroupName="starticonsize" Content="小" Tag="small" Style="{StaticResource SegmentStyle}" Checked="OnStartIconSizeChecked" />
+                                        <RadioButton x:Name="StartIconMedium" GroupName="starticonsize" Content="中" Tag="medium" Style="{StaticResource SegmentStyle}" Checked="OnStartIconSizeChecked" />
+                                        <RadioButton x:Name="StartIconLarge" GroupName="starticonsize" Content="大" Tag="large" Style="{StaticResource SegmentStyle}" Checked="OnStartIconSizeChecked" />
+                                        <RadioButton x:Name="StartIconXLarge" GroupName="starticonsize" Content="极大" Tag="xlarge" Style="{StaticResource SegmentStyle}" Checked="OnStartIconSizeChecked" />
+                                    </local:SegmentTrack>
+                                </StackPanel>
+                                <TextBlock Style="{StaticResource RowNoteStyle}" Margin="0,2,0,6"
+                                           Text="大小决定一页放几个，图标大小决定图标和文件夹封面画多大，格子跟着变。菜单里右键空白处也能分别选。" />
                                 <local:ToggleTile x:Name="StartStatusSwitch" Title="状态栏" SwitchName="开始菜单里的状态栏" Toggled="OnBarContentToggled" Flat="True" />
                                 <local:ToggleTile x:Name="StartTraySwitch" Title="托盘按钮" SwitchName="开始菜单里的托盘按钮" Toggled="OnBarContentToggled" Flat="True" />
                             </StackPanel>
