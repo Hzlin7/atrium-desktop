@@ -632,8 +632,10 @@ public sealed partial class MainWindow
 
     private sealed class StartScene : ModuleScene
     {
-        private static readonly int[] Cols = { 7, 9, 11 }, Rows = { 3, 4, 5 }; // StartLayout::kCols, kRows
-        private const double CellW = 72, CellH = 88, GridTop = 86, GridPad = 28, Foot = 42, Gap = 12;
+        private static readonly int[] Cols = { 7, 9, 11, 13 }, Rows = { 3, 4, 5, 6 }; // StartLayout::kStartGrids
+        // The cells follow the icons' size (startIcon), as in the menu (kStartIcons).
+        private static readonly double[] CellW = { 62, 72, 94, 116 }, CellH = { 82, 88, 100, 112 }, IconPx = { 34, 40, 52, 64 };
+        private const double GridTop = 86, GridPad = 28, Foot = 42, Gap = 12;
         // Its tiles, drawn here: a name, a symbol, a colour.
         private static readonly (string Name, string Glyph, uint Top, uint Bottom)[] Apps =
         {
@@ -652,8 +654,8 @@ public sealed partial class MainWindow
         private readonly double[] _x, _y;
         private bool _placed;
         private double _staged = double.MaxValue;
-        // The panel's size, springing (kResize) to the chosen one.
-        private int _size = -1;
+        // The panel's size, springing (kResize) to the chosen one; the icons' size picks the cells.
+        private int _size = -1, _icon = -1;
         private double _pw, _pv, _mh, _mv;
         // The capsule.
         private readonly Ellipse _avatar = new() { Fill = new SolidColorBrush(Color.FromArgb(230, 0x0A, 0x84, 0xFF)), IsHitTestVisible = false };
@@ -719,21 +721,24 @@ public sealed partial class MainWindow
             }
         }
 
-        private static Size Panel(int size) => new(Cols[size] * CellW + 2 * GridPad, GridTop + Rows[size] * CellH + Foot);
+        private static Size Panel(int size, int icon) => new(Cols[size] * CellW[icon] + 2 * GridPad, GridTop + Rows[size] * CellH[icon] + Foot);
 
-        private int Chosen => M._current.StartSize switch { "small" => 0, "large" => 2, _ => 1 };
+        private int Chosen => M._current.StartSize switch { "small" => 0, "large" => 2, "xlarge" => 3, _ => 1 };
+        private int ChosenIcon => M._current.StartIcon switch { "small" => 0, "large" => 2, "xlarge" => 3, _ => 1 };
         protected override bool IsOpen => true;
-        protected override Size PopupSize => new(Panel(2).Width, Panel(2).Height + Gap + BarHeight);
+        // The panel at the size chosen (the window around it would be the largest grid, but what
+        // the preview has to fit is the menu the user sees).
+        protected override Size PopupSize => new(Panel(Chosen, ChosenIcon).Width, Panel(Chosen, ChosenIcon).Height + Gap + BarHeight);
         protected override Vector2 Anchor => new((float)(Bar!.StartX + Bar.P / 2), (float)PopupBottom);
 
-        // PopupRect: on the bar's left end, inside the stage, for the window of the largest size; the
-        // menu stands on the window's bottom left corner.
-        private double MenuLeft => Math.Clamp(Bar!.BarX, 16, Math.Max(16, W - 16 - Panel(2).Width * S));
+        // On the bar's left end, as in PopupRect; keep the chosen panel inside the stage.
+        private double MenuLeft => Math.Clamp(Bar!.BarX, 16, Math.Max(16, W - 16 - Panel(Chosen, ChosenIcon).Width * S));
 
         protected override void Entered()
         {
             _size = Chosen;
-            (_pw, _mh) = (Panel(_size).Width, Panel(_size).Height);
+            _icon = ChosenIcon;
+            (_pw, _mh) = (Panel(_size, _icon).Width, Panel(_size, _icon).Height);
             _pv = _mv = 0;
             _placed = false;
             foreach (var b in _buttons) b.Placed = false;
@@ -748,11 +753,12 @@ public sealed partial class MainWindow
         {
             if (!HasFrame) Entered();
             _size = Chosen;
+            _icon = ChosenIcon;
         }
 
         protected override bool Step(double dt)
         {
-            var target = Panel(_size);
+            var target = Panel(_size, _icon);
             if (_pw == target.Width && _mh == target.Height && _pv == 0 && _mv == 0) return false;
             ResizeSpring.Step(ref _pw, ref _pv, target.Width, dt / 1000);
             ResizeSpring.Step(ref _mh, ref _mv, target.Height, dt / 1000);
@@ -794,12 +800,13 @@ public sealed partial class MainWindow
             Box(_allGlyph, gx, top + 20, 16, 44);
             Box(_allLabel, gx + 22, top + 20, tw + 4, 44);
 
-            // The tiles (PaintTiles): their cells for the chosen size, gliding there.
+            // The tiles (PaintTiles): their cells for the chosen sizes, gliding there.
             int cols = Cols[_size];
-            double gridX = (w - cols * CellW) / 2;
+            double cw = CellW[_icon], ch = CellH[_icon], ip = IconPx[_icon];
+            double gridX = (w - cols * cw) / 2;
             for (int i = 0; i < Apps.Length; i++)
             {
-                double hx = gridX + i % cols * CellW, hy = GridTop + i / cols * CellH;
+                double hx = gridX + i % cols * cw, hy = GridTop + i / cols * ch;
                 if (!_placed) (_x[i], _y[i]) = (hx, hy);
                 _x[i] = Approach(_x[i], hx, dt, 16);
                 _y[i] = Approach(_y[i], hy, dt, 16);
@@ -809,8 +816,8 @@ public sealed partial class MainWindow
                 double e = Motion.EaseOut((Now - _staged - 12 * Math.Min(i, 18)) / 260);
                 if (e < 1) moving = true;
                 double x = _x[i], y = top + _y[i] + 10 * (1 - e);
-                Put(_icons[i], x + CellW / 2 - 20, y + 8, 40, 40);
-                Box(_names[i], x + 2, y + 52, CellW - 4, 38);
+                Put(_icons[i], x + cw / 2 - ip / 2, y + 8, ip, ip);
+                Box(_names[i], x + 2, y + 8 + ip + 4, cw - 4, 38);
                 _icons[i].Opacity = _names[i].Opacity = e;
             }
             _placed = true;

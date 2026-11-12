@@ -1,5 +1,5 @@
 // The start menu's own arrangement, %LOCALAPPDATA%\Atrium\start.json: its
-// size (small, medium or large), the apps the user hid, and its tiles in the user's order, apps and folders of apps.
+// size (small, medium, large or the largest), the apps the user hid, and its tiles in the user's order, apps and folders of apps.
 // Until the user arranges something the menu shows the apps pinned to the
 // Windows start menu (`custom` false); the first change copies them in, and
 // from then on the two are separate. Also the initials the menu searches and
@@ -19,10 +19,13 @@ struct StartTile {
 };
 
 struct StartLayout {
-    // The three sizes, in tiles across and down: small, medium (the default), large.
-    static constexpr int kSizes = 3, kMedium = 1;
-    static constexpr int kCols[kSizes] = {7, 9, 11}, kRows[kSizes] = {3, 4, 5};
+    // Two independent choices, each small, medium (the default), large and the
+    // largest. `size` is the menu's own: how many tiles a page holds. `icon` is
+    // how large a tile's icon and a folder's cover are drawn; the cells grow
+    // with it. The tables are in ui/start_menu.cpp.
+    static constexpr int kSizes = 4, kMedium = 1;
     int size = kMedium;
+    int icon = kMedium;
     bool custom = false;           // tiles arranged by the user (else the Windows pins)
     std::vector<StartTile> tiles;
     std::vector<std::wstring> hidden; // apps kept out of the menu (but for the end of the A-Z list)

@@ -61,6 +61,11 @@ struct BarScene {
     float magnifyRange = 1;
     float magnifyLift = 0;     // glass rise at full magnification, px
     float pointerX = -1;       // window px; < 0 = the pointer is not on the bar
+    // The pointer just above the bar (settings riseNear and magnifyNear): where it is
+    // along the bar, whether the glass rises to it and whether the icons magnify.
+    float nearX = -1;          // window px; < 0 = not above the bar
+    bool nearRise = false;
+    bool nearMagnify = false;
     // Press ripple in the glass (window px), started at ClockMs() `rippleMs`.
     float rippleX = 0, rippleY = 0;
     double rippleMs = 0;
@@ -154,6 +159,8 @@ private:
     // Magnification state: strength 0..1 (eases in and out), wave centre and
     // its parameters of the current frame.
     float amount_ = 0, centre_ = 0, mag_ = 1, range_ = 1;
+    // The glass's own rise (hoverRise): it also answers a pointer just above the bar.
+    float rise_ = 0;
     // The status ring: its fill springs to the battery, the volume or the
     // brightness. A changed level shows for a while (the latest change wins);
     // `volumeMix` and `brightMix` (0..1) fade the speaker and the sun in.

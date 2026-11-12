@@ -184,8 +184,9 @@ public sealed partial class MainWindow
         double by = Math.Max(10, viewH - s.Margin * S - H * S);
         double X(double left) => left < 0 ? -1 : bx + left * S;
 
-        // As if the pointer rested on the second app.
-        double k = wave && mag > 1.001 ? mag - 1 : 0, range = pitch * 2.3 * S;
+        // As if the pointer rested on the bar, just above the second app: the icons take the wave
+        // with 栏上方提前放大图标 (magnifyNear); the glass rises on its own switch below.
+        double k = wave && mag > 1.001 && s.MagnifyNear ? mag - 1 : 0, range = pitch * 2.3 * S;
         double centre = n > 1 ? bx + (appsLeft + pitch) * S + P * S / 2 : bx + (pad + P / 2) * S;
         double Map(double u)
         {
@@ -301,6 +302,22 @@ public sealed partial class MainWindow
                 Chip($"{Math.Round(_current.Width)} px", _heroW / 2, y - 24);
                 break;
             }
+            case "进入距离":
+            case "离开距离":
+            {
+                // The band above the bar that answers a pointer coming down onto it (栏上方提前拱起 /
+                // 提前放大图标): a dashed line at the enter distance, and the leave one while it is set.
+                double x0 = L.BarX + 8, x1 = Math.Max(x0 + 1, barRight - 8);
+                double enterY = L.BarY - _current.NearEnter * L.S, leaveY = L.BarY - _current.NearLeave * L.S;
+                Line(x0, enterY, x1, enterY, dashed: true);
+                Chip($"进入 {Math.Round(_current.NearEnter)} px", x0 + 44, enterY - 22);
+                if (_engaged == "离开距离")
+                {
+                    Line(x0, leaveY, x1, leaveY, dashed: true);
+                    Chip($"离开 {Math.Round(_current.NearLeave)} px", x0 + 44, leaveY - 22);
+                }
+                break;
+            }
             case "圆角":
             {
                 // The circle the corner is an arc of, and its radius.
@@ -342,12 +359,15 @@ public sealed partial class MainWindow
             _heroPhotoGen = j.PhotoGeneration;
             Interlocked.Exchange(ref _photoPending, _mainBg);
         }
-        // Keep the specimen and loupe in step with the native hover-rise switch.
+        // Keep the specimen and loupe in step with the two early-answer switches: the glass
+        // rises with 跟随鼠标拱起 + 栏上方提前拱起 (hoverRise + riseNear), whether or not the
+        // icons take the wave with it.
+        double waveRise = j.S.HoverRise && j.S.RiseNear ? Math.Clamp(j.S.Magnify, 1, 2) - 1 : 0;
         GlassSpec Spec(double ppd) => GlassSpec.For(j.S, L.S * ppd) with
         {
             WaveX = (float)((L.Centre - L.BarX - L.BarW / 2) * ppd),
             WaveWidth = (float)(L.Range * (1 + L.K / 2) * ppd),
-            WaveHeight = j.S.HoverRise ? (float)(L.Icon * L.K * ppd) : 0,
+            WaveHeight = (float)(L.Icon * waveRise * ppd),
         };
         var spec = Spec(j.Rs);
         int inset = (int)spec.Inset;
