@@ -786,5 +786,7 @@ internal static class Loc
         ["昨天 {0}小时"] = "Yesterday {0} h",
         ["今天 {0}小时"] = "Today {0} h",
         ["农历{0}"] = "Lunar {0}",
+        ["Windows 风格上下文菜单"] = "Windows-style context menu",
+        ["图标右键菜单显示程序自己的跳转列表（最近的文件夹、工作区、任务），以及“以管理员身份运行”和“属性”。"] = "The icon context menu shows the app's own jump list (recent folders, workspaces and tasks), plus “Run as administrator” and “Properties”.",
     };
 }

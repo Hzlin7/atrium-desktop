@@ -269,6 +269,14 @@ const Entry kEnglish[] = {
     {L"明天 %s小时", L"Tomorrow %s h"},
     {L"昨天 %s小时", L"Yesterday %s h"},
     {L"今天 %s小时", L"Today %s h"},
+    {L"已固定", L"Pinned"},
+    {L"最近", L"Recent"},
+    {L"常用", L"Frequent"},
+    {L"任务", L"Tasks"},
+    {L"文件夹", L"Folders"},
+    {L"工作区", L"Workspaces"},
+    {L"以管理员身份运行", L"Run as administrator"},
+    {L"属性", L"Properties"},
 };
 
 const std::unordered_map<std::wstring_view, const wchar_t*>& English()

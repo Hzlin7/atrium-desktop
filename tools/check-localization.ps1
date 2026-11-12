@@ -90,6 +90,21 @@ foreach ($file in $settingsFiles) {
         -Table $settingsTable -PlaceholderKind "settings"
 }
 
+# XAML carries most of the static settings text; a page can be localized
+# without any Loc.T call in code, so check the literal attributes too.
+$xamlFiles = Get-ChildItem (Join-Path $root "settings/Atrium.Settings") -File -Filter *.xaml
+foreach ($file in $xamlFiles) {
+    $text = Read-Text $file.FullName
+    $attributePattern = '(?:Text|Title|Note|Content|SwitchName|Header|PlaceholderText|AutomationProperties\.Name)="([^"]*[\u4e00-\u9fff][^"]*)"'
+    foreach ($match in [regex]::Matches($text, $attributePattern)) {
+        $value = $match.Groups[1].Value
+        if (-not $settingsTable.ContainsKey($value)) {
+            $line = Line-Of $text $match.Index
+            $errors.Add("xaml: $($file.FullName):${line}: missing settings table entry for `"$value`"")
+        }
+    }
+}
+
 if ($errors.Count -gt 0) {
     foreach ($message in $errors) { Write-Host "ERROR: $message" }
     Write-Host "Localization check failed ($($errors.Count) error(s))."
