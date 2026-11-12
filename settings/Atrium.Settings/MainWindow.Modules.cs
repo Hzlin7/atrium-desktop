@@ -286,10 +286,10 @@ public sealed partial class MainWindow
         protected double PopupBottom => Bar!.BarY - PopupGap * S;
         protected double BarRight => Math.Min(Bar!.BarX + Bar.BarW, W - 16); // PopupRect, right-aligned with the bar
 
-        // The marks' origin (stage DIP); inside, real DIP.
-        protected void PlaceMarks(double x, double y)
+        // The marks' origin (stage DIP); inside, real DIP (times `scale`, by default the scene's).
+        protected void PlaceMarks(double x, double y, double? scale = null)
         {
-            _marksScale.ScaleX = _marksScale.ScaleY = S;
+            _marksScale.ScaleX = _marksScale.ScaleY = scale ?? S;
             Canvas.SetLeft(Marks, x);
             Canvas.SetTop(Marks, y);
         }
@@ -674,7 +674,7 @@ public sealed partial class MainWindow
             public bool On, Placed;
         }
 
-        private sealed record Frame(double Left, double Bottom, double PanelW, double MainH);
+        private sealed record Frame(double Left, double Bottom, double PanelW, double MainH, double Scale);
 
         public StartScene(MainWindow m) : base(m, m.StartStage, m.StartCanvas)
         {
@@ -726,13 +726,17 @@ public sealed partial class MainWindow
         private int Chosen => M._current.StartSize switch { "small" => 0, "large" => 2, "xlarge" => 3, _ => 1 };
         private int ChosenIcon => M._current.StartIcon switch { "small" => 0, "large" => 2, "xlarge" => 3, _ => 1 };
         protected override bool IsOpen => true;
-        // The panel at the size chosen (the window around it would be the largest grid, but what
-        // the preview has to fit is the menu the user sees).
-        protected override Size PopupSize => new(Panel(Chosen, ChosenIcon).Width, Panel(Chosen, ChosenIcon).Height + Gap + BarHeight);
+        // The scene keeps one scale whichever size is chosen, that of the large menu (large grid,
+        // large icons): the bar stays put and the menu grows or shrinks beside it. A larger menu is
+        // drawn smaller as a whole (MenuScale) to stay in the stage.
+        protected override Size PopupSize => new(Panel(2, 2).Width, Panel(2, 2).Height + Gap + BarHeight);
         protected override Vector2 Anchor => new((float)(Bar!.StartX + Bar.P / 2), (float)PopupBottom);
 
-        // On the bar's left end, as in PopupRect; keep the chosen panel inside the stage.
-        private double MenuLeft => Math.Clamp(Bar!.BarX, 16, Math.Max(16, W - 16 - Panel(Chosen, ChosenIcon).Width * S));
+        // The menu's own scale (stage DIP per menu DIP): the scene's, less where the panel would not fit.
+        private double MenuScale => S * Math.Min(1, Math.Min((W - 32) / Math.Max(1, _pw * S), (PopupBottom - 8) / Math.Max(1, (_mh + Gap + BarHeight) * S)));
+
+        // On the bar's left end, as in PopupRect; keep the panel inside the stage.
+        private double MenuLeft => Math.Clamp(Bar!.BarX, 16, Math.Max(16, W - 16 - _pw * MenuScale));
 
         protected override void Entered()
         {
@@ -772,12 +776,12 @@ public sealed partial class MainWindow
 
         protected override (GlassTile[] Tiles, object State) Pieces()
         {
-            double left = MenuLeft, bottom = PopupBottom, bh = BarHeight;
+            double left = MenuLeft, bottom = PopupBottom, bh = BarHeight, k = MenuScale;
             return (new[]
             {
-                new GlassTile(left, bottom - (_mh + Gap + bh) * S, _pw * S, _mh * S, Radius * S),
-                new GlassTile(left, bottom - bh * S, _pw * S, bh * S, bh * S / 2),
-            }, new Frame(left, bottom, _pw, _mh));
+                new GlassTile(left, bottom - (_mh + Gap + bh) * k, _pw * k, _mh * k, Radius * k),
+                new GlassTile(left, bottom - bh * k, _pw * k, bh * k, bh * k / 2),
+            }, new Frame(left, bottom, _pw, _mh, k));
         }
 
         protected override void Ink(int piece, bool dark) => (piece == 0 ? _panel : _shelf).Set(dark);
@@ -785,7 +789,7 @@ public sealed partial class MainWindow
         protected override bool Arrange(object state, double dt)
         {
             var f = (Frame)state;
-            PlaceMarks(f.Left, f.Bottom);
+            PlaceMarks(f.Left, f.Bottom, f.Scale);
             double bh = BarHeight, top = -(f.MainH + Gap + bh), w = f.PanelW;
             bool moving = false;
 
