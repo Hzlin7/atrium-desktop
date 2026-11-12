@@ -57,10 +57,26 @@ internal static class Loc
             Localize(VisualTreeHelper.GetChild(root, i));
     }
 
+    private static void TranslateInlines(InlineCollection inlines)
+    {
+        foreach (var inline in inlines)
+        {
+            if (inline is Run run && !string.IsNullOrEmpty(run.Text))
+                run.Text = T(run.Text);
+            else if (inline is Span span)
+                TranslateInlines(span.Inlines);
+        }
+    }
+
     private static void ApplyTo(DependencyObject d)
     {
         switch (d)
         {
+            // Run by run: setting Text would replace the inlines, and code that
+            // keeps a named Run (a slider's value) would go on updating a detached one.
+            case TextBlock text when text.Inlines.Count > 0:
+                TranslateInlines(text.Inlines);
+                break;
             case TextBlock text when !string.IsNullOrEmpty(text.Text):
                 text.Text = T(text.Text);
                 break;
@@ -793,7 +809,7 @@ internal static class Loc
         ["显示秒"] = "Show seconds",
         ["时钟显示秒"] = "Clock shows seconds",
         ["在分钟之后显示秒；位置跟随系统的时间格式。"] = "Seconds after the minutes, placed as the system's time format has them.",
-        ["极大"] = "Extra large",
+        ["极大"] = "Huge",
         ["大小决定一页放几个，图标大小决定图标和文件夹封面画多大，格子跟着变。菜单里右键空白处也能分别选。"] = "Size sets how many apps a page holds; icon size sets how large icons and folder covers are drawn, and the cells follow. Right-click an empty spot in the menu to pick either.",
         ["指针在栏上时玻璃随放大波拱起。"] = "With the pointer on the bar, the glass rises with the magnification wave.",
         ["栏上方提前拱起"] = "Rise early above the bar",
@@ -802,7 +818,7 @@ internal static class Loc
         ["栏上方提前放大图标"] = "Magnify icons early above the bar",
         ["指针在栏上方时提前放大图标"] = "Magnify icons early with the pointer above the bar",
         ["同上，图标也提前放大；不依赖“跟随鼠标拱起”，它自己就能生效。"] = "Likewise, the icons magnify early. This works on its own, without “Rise with the pointer”.",
-        ["栏上方提前响应"] = "Early response above the bar",
+        ["栏上方提前响应"] = "Early response",
         ["恢复提前响应的默认值"] = "Restore the early response defaults",
         ["进入距离"] = "Enter distance",
         ["离开距离"] = "Leave distance",

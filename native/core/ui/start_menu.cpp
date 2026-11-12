@@ -1439,7 +1439,7 @@ void StartMenu::PaintPower(Canvas& c, const Theme& t)
         c.Continue();
     c.BeginGroup(motion::EaseOut(e * 1.3f), 0.92f + 0.08f * motion::EaseOutBack(e, 1.5f), card.right - 22, card.bottom);
     static const wchar_t* const kGlyphs[] = {L"\uE708", L"\uE72C", L"\uE7E8", L"\uE72E"};
-    static const wchar_t* const kNames[] = {Tr(L"睡眠"), Tr(L"重启"), Tr(L"关机"), Tr(L"锁定")};
+    const wchar_t* const kNames[] = {Tr(L"睡眠"), Tr(L"重启"), Tr(L"关机"), Tr(L"锁定")};
     for (int i = 0; i < 4; ++i) {
         D2D1_RECT_F row = D2D1::RectF(card.left + 8, card.top + kPowerPad + kPowerRowH * float(i), card.right - 8,
                                       card.top + kPowerPad + kPowerRowH * float(i + 1));
@@ -1995,7 +1995,7 @@ void StartMenu::ContextMenu(const std::wstring& id, POINT screen)
         entries = {{Tr(L"打开"), kOpen}, {Tr(L"重命名"), kRename}, {Tr(L"解散文件夹"), kUngroup}};
     } else if (id.empty() && !Listing() && folder_ < 0) {
         // Two choices of their own: how much the menu holds, and how large its icons are.
-        static const wchar_t* const kNames[] = {Tr(L"小"), Tr(L"中"), Tr(L"大"), Tr(L"极大")};
+        const wchar_t* const kNames[] = {Tr(L"小"), Tr(L"中"), Tr(L"大"), Tr(L"极大")};
         entries.push_back({Tr(L"菜单大小"), 0, false, true, true});
         for (int grid = 0; grid <= room_; ++grid)
             entries.push_back({kNames[grid], kSize + grid, grid == grid_});

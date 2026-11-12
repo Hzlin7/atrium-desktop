@@ -279,7 +279,7 @@ const Entry kEnglish[] = {
     {L"属性", L"Properties"},
     {L"菜单大小", L"Menu size"},
     {L"图标大小", L"Icon size"},
-    {L"极大", L"Extra large"},
+    {L"极大", L"Huge"},
     {L"网络", L"Network"},
     {L"没有可用的网络", L"No network"},
     {L"本次接收 %s · 发送 %s", L"Received %s · sent %s"},
