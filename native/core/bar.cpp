@@ -1,4 +1,6 @@
 #include "bar.h"
+
+#include "localization.h"
 #include "render/continuous_corners.h"
 
 #include "clock.h"
@@ -1627,24 +1629,29 @@ RECT Bar::BarRect() const
 std::wstring Bar::TooltipText(const std::wstring& key) const
 {
     if (key == kStartKey)
-        return L"\u5F00\u59CB"; // 开始
+        return Tr(L"开始");
     if (key == kNotifyKey)
-        return unread_ ? std::to_wstring(unread_) + L" \u6761\u672A\u8BFB\u901A\u77E5" : L"\u901A\u77E5"; // N 条未读通知 / 通知
+        return unread_ ? TrFormat(L"%d 条未读通知", int(unread_)) : Tr(L"通知");
     if (key == kTrayKey)
-        return L"\u6258\u76D8"; // 托盘
+        return Tr(L"托盘");
     if (key == kStatusKey) {
         const SystemStatus& st = status_;
-        std::wstring net = !st.connected ? L"\u672A\u8FDE\u63A5\u7F51\u7EDC" // 未连接网络
-                                         : (st.wifi ? L"Wi-Fi " : L"") + st.network + (st.wifi ? L" \u00B7 \u4FE1\u53F7 " + std::to_wstring(st.signal) + L"%" : L"");
+        std::wstring net;
+        if (!st.connected)
+            net = Tr(L"未连接网络");
+        else if (st.wifi)
+            net = TrFormat(L"Wi-Fi %s · 信号 %d%%", st.network.c_str(), st.signal);
+        else
+            net = st.network;
         std::wstring more;
         if (st.battery)
-            more = L"\n\u7535\u6C60 " + std::to_wstring(st.batteryPercent) + L"%" + (st.charging ? L" \u00B7 \u5DF2\u63A5\u901A\u7535\u6E90" : L""); // 电池 N% · 已接通电源
+            more = st.charging ? TrFormat(L"\n电池 %d%% · 已接通电源", st.batteryPercent) : TrFormat(L"\n电池 %d%%", st.batteryPercent);
         if (st.audio)
-            more += L"\n\u97F3\u91CF " + (st.muted ? std::wstring(L"\u9759\u97F3") : std::to_wstring(st.volume) + L"%"); // 音量 N% / 静音
+            more += st.muted ? Tr(L"\n静音") : TrFormat(L"\n音量 %d%%", st.volume);
         return net + more;
     }
     if (key == kMoreKey)
-        return L"\u53E6\u5916 " + std::to_wstring(hidden_.size()) + L" \u4E2A\u5E94\u7528"; // 另外 N 个应用
+        return TrFormat(L"另外 %d 个应用", int(hidden_.size()));
     if (key == kClockKey) {
         wchar_t buf[128] = {};
         GetDateFormatEx(LOCALE_NAME_USER_DEFAULT, DATE_LONGDATE, nullptr, nullptr, buf, 128, nullptr);
@@ -1652,7 +1659,7 @@ std::wstring Bar::TooltipText(const std::wstring& key) const
     }
     for (const auto& t : items_)
         if (t.key == key)
-            return t.windows.size() > 1 ? t.name + L" \u00B7 " + std::to_wstring(t.windows.size()) + L" \u4E2A\u7A97\u53E3" : t.name;
+            return t.windows.size() > 1 ? TrFormat(L"%s · %d 个窗口", t.name.c_str(), int(t.windows.size())) : t.name;
     return {};
 }
 
@@ -1688,16 +1695,18 @@ void Bar::ShowTooltip()
     const float maxTextW = std::min(320.f, float(mi.rcWork.right - mi.rcWork.left - 2 * margin) / scale_ - 2 * kTooltipPadX);
     winrt::com_ptr<IDWriteTextFormat> format;
     winrt::com_ptr<IDWriteTextLayout> layout;
-    if (FAILED(UiTextFormat(dwrite_.get(), kTooltipFont, DWRITE_FONT_WEIGHT_MEDIUM, format.put())))
+    // UiTextFormat/UiTextLayout take physical pixels: the tooltip's size is
+    // DIP, so measure at the monitor's scale and divide the metrics back.
+    if (FAILED(UiTextFormat(dwrite_.get(), kTooltipFont * scale_, DWRITE_FONT_WEIGHT_MEDIUM, format.put())))
         return;
     format->SetWordWrapping(DWRITE_WORD_WRAPPING_NO_WRAP);
-    if (FAILED(UiTextLayout(dwrite_.get(), text, format.get(), maxTextW, 1000, layout.put())))
+    if (FAILED(UiTextLayout(dwrite_.get(), text, format.get(), maxTextW * scale_, 1000 * scale_, layout.put())))
         return;
     DWRITE_TEXT_METRICS metrics{};
     layout->GetMetrics(&metrics);
     tooltipText_ = std::move(text);
-    tooltipSize_ = D2D1::SizeF(std::min(maxTextW, std::ceil(metrics.widthIncludingTrailingWhitespace)) + 2 * kTooltipPadX,
-                              std::max(kTooltipMinH, std::ceil(metrics.height) + 2 * kTooltipPadY));
+    tooltipSize_ = D2D1::SizeF(std::min(maxTextW, std::ceil(metrics.widthIncludingTrailingWhitespace / scale_)) + 2 * kTooltipPadX,
+                              std::max(kTooltipMinH, std::ceil(metrics.height / scale_) + 2 * kTooltipPadY));
     int w = Px(tooltipSize_.width, scale_), h = Px(tooltipSize_.height, scale_);
     int cx = window_.left + (hit->rect.left + hit->rect.right) / 2;
     // Above the magnified icons when they grow.

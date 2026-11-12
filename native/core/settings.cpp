@@ -1,5 +1,6 @@
 #include "settings.h"
 
+#include "localization.h"
 #include "log.h"
 #include "shell/logon_task.h"
 
@@ -45,6 +46,8 @@ void Settings::Clamp()
     c(nearLeave, 2, 200, d.nearLeave);
     c(dockDisplayDelay, 100, 2000, d.dockDisplayDelay);
     tint &= 0xFFFFFF;
+    if (language != L"zh" && language != L"en")
+        language = L"auto";
     if (textColor != L"light" && textColor != L"dark")
         textColor = L"auto";
     if (autoHide != L"never" && autoHide != L"always")
@@ -105,6 +108,7 @@ std::wstring Settings::ToJson() const
     o.SetNamedValue(L"showNotifications", json::JsonValue::CreateBooleanValue(showNotifications));
     o.SetNamedValue(L"autoWidth", json::JsonValue::CreateBooleanValue(autoWidth));
     o.SetNamedValue(L"showRunning", json::JsonValue::CreateBooleanValue(showRunning));
+    o.SetNamedValue(L"language", json::JsonValue::CreateStringValue(language));
     o.SetNamedValue(L"textColor", json::JsonValue::CreateStringValue(textColor));
     o.SetNamedValue(L"autoHide", json::JsonValue::CreateStringValue(autoHide));
     o.SetNamedValue(L"statusStyle", json::JsonValue::CreateStringValue(statusStyle));
@@ -233,6 +237,8 @@ bool Settings::FromJson(const std::wstring& text, const Settings& base, Settings
         const std::wstring m(o.GetNamedString(L"widgetMaterial"));
         s.widgetMaterial = m == L"dusk" || m == L"color" ? m : L"glass";
     }
+    if (o.HasKey(L"language") && o.GetNamedValue(L"language").ValueType() == json::JsonValueType::String)
+        s.language = std::wstring(o.GetNamedString(L"language"));
     if (o.HasKey(L"textColor") && o.GetNamedValue(L"textColor").ValueType() == json::JsonValueType::String)
         s.textColor = std::wstring(o.GetNamedString(L"textColor"));
     if (o.HasKey(L"autoHide") && o.GetNamedValue(L"autoHide").ValueType() == json::JsonValueType::String)
@@ -406,7 +412,7 @@ bool SaveSettings(const Settings& s, std::wstring* warning)
         return false;
     if (startupChanged && !SetStartOnLogin(s.startOnLogin)) {
         Log(L"settings: settings saved, but Windows startup could not be changed");
-        if (warning) *warning = L"设置已保存，但未能修改 Windows 开机启动。请重新切换开机启动后再保存。";
+        if (warning) *warning = Tr(L"设置已保存，但未能修改 Windows 开机启动。请重新切换开机启动后再保存。");
     }
     return true;
 }
