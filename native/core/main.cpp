@@ -18,6 +18,7 @@
 #include "shell/system_chrome.h"
 #include "shell/system_status.h"
 #include "shell/tray_model.h"
+#include "shell/usb_volume.h"
 #include "shell/shell_verbs.h"
 #include "shell/jump_list.h"
 #include "shell/win_key.h"
@@ -34,6 +35,7 @@
 #include "ui/tray_panel.h"
 
 #include <windows.h>
+#include <dbt.h>
 #include <shellapi.h>
 #include <shlobj.h>
 #include <UIAutomation.h>
@@ -96,6 +98,7 @@ struct App {
     std::unique_ptr<StartMenu> start;
     std::unique_ptr<Notifications> notes;
     std::unique_ptr<NotificationListener> listener;
+    std::unique_ptr<UsbVolumes> usb;
     std::unique_ptr<UpdateChecker> updates;
     std::unique_ptr<WeChatSource> wechat;
     std::unique_ptr<FeishuSource> feishu;
@@ -117,6 +120,7 @@ struct App {
     std::optional<bool> barOn; // the bar module, as last applied
     int brightness = -1; // the built-in screen's, from GUID_VIDEO_CURRENT_MONITOR_BRIGHTNESS
     HPOWERNOTIFY brightnessNotify = nullptr;
+    HDEVNOTIFY usbNotify = nullptr; // volume interface events, for the USB card
 };
 
 App g_app;
@@ -138,6 +142,7 @@ void SyncDisplayBars(const Settings& settings, bool refresh = false);
 // built-in screen's brightness (keys, quick settings, our slider), and the
 // current level once on registration.
 constexpr GUID kBrightnessSetting = {0x8ffee2c6, 0x2d01, 0x46be, {0xad, 0xb9, 0x39, 0x8a, 0xdd, 0xc5, 0xb4, 0xff}};
+constexpr GUID kVolumeInterface = {0x53f5630d, 0xb6bf, 0x11d0, {0x94, 0xf2, 0x00, 0xa0, 0xc9, 0x1e, 0xfb, 0x8b}}; // GUID_DEVINTERFACE_VOLUME
 
 std::wstring ExeDir()
 {
@@ -1170,6 +1175,50 @@ LRESULT CALLBACK HostProc(HWND h, UINT m, WPARAM w, LPARAM l)
             }
         }
         return TRUE;
+    case WM_DEVICECHANGE:
+        // A removable drive went, or is going: Windows' own toast for it is a
+        // balloon of its tray icon and Do Not Disturb swallows it whole, so the
+        // card is Atrium's own (shell/usb_volume.h).
+        if (g_app.usb && (w == DBT_DEVICEARRIVAL || w == DBT_DEVICEREMOVEPENDING || w == DBT_DEVICEREMOVECOMPLETE)) {
+            UsbVolumes::Event event;
+            event.kind = UINT(w);
+            if (const auto* header = reinterpret_cast<const DEV_BROADCAST_HDR*>(l);
+                header && header->dbch_devicetype == DBT_DEVTYP_VOLUME) {
+                const auto& volume = *reinterpret_cast<const DEV_BROADCAST_VOLUME*>(l);
+                event.unitmask = volume.dbcv_unitmask;
+                event.media = (volume.dbcv_flags & DBTF_MEDIA) != 0;
+            } else if (
+                header && header->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE &&
+                reinterpret_cast<const DEV_BROADCAST_DEVICEINTERFACE_W*>(l)->dbcc_classguid == kVolumeInterface) {
+                // No unitmask here: the mask snapshot decides which letters it concerns.
+            } else {
+                break; // another device kind, or a broadcast without a payload
+            }
+            const std::vector<RemovedVolume> removed = g_app.usb->Sync(event);
+            if (!removed.empty() && g_app.notes && g_app.barOn.value_or(true)) {
+                std::vector<std::wstring> names;
+                bool ejected = true;
+                for (const auto& volume : removed) {
+                    names.push_back(VolumeName(volume.label, volume.letter));
+                    if (!volume.ejected)
+                        ejected = false;
+                }
+                Notice notice;
+                notice.source = L"usb";
+                notice.app = L"Atrium";
+                const std::wstring list = JoinNames(names);
+                if (ejected) {
+                    notice.title = Tr(L"安全删除硬件");
+                    notice.body = TrFormat(L"「%s」现在可以安全地拔出。", list.c_str());
+                } else {
+                    notice.title = Tr(L"USB 设备已移除");
+                    notice.body = TrFormat(L"「%s」已从计算机移除。", list.c_str());
+                }
+                g_app.notes->Post(std::move(notice));
+            }
+            return TRUE;
+        }
+        break;
     case WM_TRAY_ICONS:
         if (w == 1) // a click was forwarded: see where the focus ends up
             SetTimer(h, kTrayFocusTimer, 600, nullptr);
@@ -1284,6 +1333,8 @@ LRESULT CALLBACK HostProc(HWND h, UINT m, WPARAM w, LPARAM l)
     case WM_DESTROY:
         if (g_app.brightnessNotify)
             UnregisterPowerSettingNotification(g_app.brightnessNotify);
+        if (g_app.usbNotify)
+            UnregisterDeviceNotification(g_app.usbNotify);
         RemoveTrayIcon();
         PostQuitMessage(0);
         return 0;
@@ -1482,6 +1533,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int)
     g_app.control->onStage = SetStageManager;
     g_app.widgets->onStatusRequest = UpdateStatus;
     g_app.status = std::make_unique<SystemStatusReader>(g_app.host, WM_STATUS, WM_VOLUME);
+    g_app.usb = std::make_unique<UsbVolumes>(); // the USB card's source of device events
     g_app.widgets->menu = g_app.menu.get();
     g_app.widgets->onAddWidgets = [] { OpenSettings(L"widgets"); };
     g_app.widgets->onCalendar = [] {
@@ -1525,6 +1577,14 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int)
     AddTrayIcon();
     UpdateStatus();
     g_app.brightnessNotify = RegisterPowerSettingNotification(g_app.host, &kBrightnessSetting, DEVICE_NOTIFY_WINDOW_HANDLE);
+    // The volume broadcasts reach a top-level window anyway; this directs them
+    // as well, should a build ever stop broadcasting them.
+    DEV_BROADCAST_DEVICEINTERFACE_W volumeInterface{sizeof(DEV_BROADCAST_DEVICEINTERFACE_W)};
+    volumeInterface.dbcc_devicetype = DBT_DEVTYP_DEVICEINTERFACE;
+    volumeInterface.dbcc_classguid = kVolumeInterface;
+    g_app.usbNotify = RegisterDeviceNotificationW(g_app.host, &volumeInterface, DEVICE_NOTIFY_WINDOW_HANDLE);
+    if (!g_app.usbNotify)
+        Log(L"usb: could not register for volume notifications (%lu)", GetLastError());
     SetTimer(g_app.host, kStatusTimer, kStatusMs, nullptr);
     g_app.tray->Refresh(); // the panel opens with the icons already read
     g_app.updates = std::make_unique<UpdateChecker>(g_app.host);
@@ -1559,6 +1619,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int)
     g_app.listener.reset();
     g_app.wechat.reset();
     g_app.feishu.reset();
+    g_app.usb.reset();
     g_app.notes.reset();
     g_app.widgets.reset();
     g_app.calendar.reset();
