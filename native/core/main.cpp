@@ -1350,12 +1350,39 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int)
     if (!mutex) return 1;
     if (GetLastError() == ERROR_ALREADY_EXISTS) {
         // Already running: launching it again opens the settings instead.
-        if (HWND other = FindWindowW(kHostClass, nullptr)) {
-            if (SameCoreExecutable(other)) PostMessageW(other, WM_OPEN_SETTINGS, 0, 0);
-            else MessageBoxW(nullptr, Tr(L"另一位置的 Atrium 正在运行。请先退出该实例，再启动本目录中的版本。"), L"Atrium", MB_OK | MB_ICONINFORMATION);
+        HWND other = FindWindowW(kHostClass, nullptr);
+        if (other && SameCoreExecutable(other)) {
+            PostMessageW(other, WM_OPEN_SETTINGS, 0, 0);
+            CloseHandle(mutex);
+            return 0;
+        }
+        // Another copy (an older version unzipped elsewhere, #44): this one may take over, and
+        // the logon entry and the registration move here as it starts.
+        bool replaced = false;
+        if (other && MessageBoxW(nullptr, Tr(L"另一位置的 Atrium 正在运行。要退出它，改用本目录中的版本吗？"), L"Atrium",
+                                 MB_YESNO | MB_ICONQUESTION | MB_SETFOREGROUND) == IDYES) {
+            DWORD pid = 0;
+            GetWindowThreadProcessId(other, &pid);
+            if (HANDLE process = OpenProcess(SYNCHRONIZE, FALSE, pid)) {
+                PostMessageW(other, WM_CLOSE, 0, 0);
+                replaced = WaitForSingleObject(process, 15000) == WAIT_OBJECT_0;
+                CloseHandle(process);
+            }
+            // And its guard, which puts Windows' taskbar back as that copy ends.
+            if (HANDLE guard = OpenMutexW(SYNCHRONIZE, FALSE, kGuardMutex)) {
+                DWORD done = WaitForSingleObject(guard, 5000);
+                if (done == WAIT_OBJECT_0 || done == WAIT_ABANDONED)
+                    ReleaseMutex(guard);
+                CloseHandle(guard);
+            }
         }
         CloseHandle(mutex);
-        return 0;
+        if (!replaced)
+            return 0;
+        mutex = CreateMutexW(nullptr, TRUE, kInstanceMutex);
+        if (!mutex || GetLastError() == ERROR_ALREADY_EXISTS)
+            return 0;
+        Log(L"core: took over from the copy at another location");
     }
     winrt::init_apartment(winrt::apartment_type::single_threaded);
     SetCurrentProcessExplicitAppUserModelID(kAppId);

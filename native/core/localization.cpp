@@ -43,8 +43,8 @@ const Entry kEnglish[] = {
     {L"关闭程序", L"Close Program"},
     {L"卸载 Atrium？个人设置和桌面小组件布局将会保留。",
      L"Uninstall Atrium? Your personal settings and desktop widget layout will be kept."},
-    {L"另一位置的 Atrium 正在运行。请先退出该实例，再启动本目录中的版本。",
-     L"Atrium is running from another location. Quit that instance, then start the version in this folder."},
+    {L"另一位置的 Atrium 正在运行。要退出它，改用本目录中的版本吗？",
+     L"Atrium is running from another location. Quit it and use the version in this folder?"},
     // settings.cpp
     {L"设置已保存，但未能修改 Windows 开机启动。请重新切换开机启动后再保存。",
      L"Settings were saved, but Windows startup could not be changed. Toggle Start with Windows again, then save."},
