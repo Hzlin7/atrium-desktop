@@ -555,10 +555,10 @@ void PaintNetwork(Canvas& c, WidgetSize size, const WidgetWorld& w, const Pal& p
     const bool mono = p.icon == Ink::Mono;
     const D2D1_COLOR_F down = mono ? Alpha(p.text, 0.95f) : p.blue;
     const D2D1_COLOR_F up = mono ? Alpha(p.text, 0.5f) : p.orange;
-    c.Text(L"网络", D2D1::RectF(pad + 1, pad - 2, W - pad - 40, pad + 16), compact ? 12.5f : 13.5f, p.sub, DWRITE_FONT_WEIGHT_SEMI_BOLD);
+    c.Text(Tr(L"网络"), D2D1::RectF(pad + 1, pad - 2, W - pad - 40, pad + 16), compact ? 12.5f : 13.5f, p.sub, DWRITE_FONT_WEIGHT_SEMI_BOLD);
     if (!n || !n->Linked()) {
         c.Glyph(L"\uE774", D2D1::RectF(0, H / 2 - 48, W, H / 2 - 14), 24, p.sub);
-        c.Text(L"没有可用的网络", D2D1::RectF(pad, H / 2 - 6, W - pad, H / 2 + 14), 12.5f, p.sub, DWRITE_FONT_WEIGHT_SEMI_BOLD, 1);
+        c.Text(Tr(L"没有可用的网络"), D2D1::RectF(pad, H / 2 - 6, W - pad, H / 2 + 14), 12.5f, p.sub, DWRITE_FONT_WEIGHT_SEMI_BOLD, 1);
         return;
     }
     if (!compact) {
@@ -595,7 +595,7 @@ void PaintNetwork(Canvas& c, WidgetSize size, const WidgetWorld& w, const Pal& p
     c.Line(pad, 136, W - pad, 136, p.track);
     GraphLine(c, history, false, pad, 102, W - pad, 136, top, down);
     GraphLine(c, history, true, pad, 102, W - pad, 136, top, up);
-    c.Text(L"本次接收 " + BytesText(n->DownBytes()) + L" · 发送 " + BytesText(n->UpBytes()),
+    c.Text(TrFormat(L"本次接收 %s · 发送 %s", BytesText(n->DownBytes()).c_str(), BytesText(n->UpBytes()).c_str()),
            D2D1::RectF(pad, 140, W - pad, 154), 10, p.sub);
 }
 
