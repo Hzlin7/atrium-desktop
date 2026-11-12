@@ -17,3 +17,8 @@ add_executable(app_processes_tests
 target_include_directories(app_processes_tests PRIVATE ../core)
 target_compile_definitions(app_processes_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 add_test(NAME app_processes COMMAND app_processes_tests)
+
+add_executable(double_click_tests
+    double_click.cpp)
+target_include_directories(double_click_tests PRIVATE ../core)
+add_test(NAME double_click COMMAND double_click_tests)

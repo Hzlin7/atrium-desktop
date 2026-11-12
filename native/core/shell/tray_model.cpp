@@ -756,14 +756,14 @@ void TrayModel::Refresh()
 {
     std::lock_guard g(mutex_);
     if (std::none_of(jobs_.begin(), jobs_.end(), [](const Job& j) { return j.refresh; }))
-        jobs_.push_back({true, {}, false});
+        jobs_.push_back({true, {}, false, false});
     cv_.notify_all();
 }
 
-void TrayModel::Click(const TrayIcon& icon, bool right)
+void TrayModel::Click(const TrayIcon& icon, bool right, bool dbl)
 {
     std::lock_guard g(mutex_);
-    jobs_.push_back({false, icon, right});
+    jobs_.push_back({false, icon, right, dbl});
     cv_.notify_all();
 }
 
@@ -897,25 +897,36 @@ void TrayModel::Worker()
                 RECT at = it != buttons.end() ? it->bounds : RECT{};
                 if (it != buttons.end() && it->toolbar && !IsRectEmpty(&at)) {
                     // The classic toolbar: a click of the mouse on the button, as messages to it.
-                    // Explorer tells the app where the pointer is (its menu opens there).
+                    // Explorer tells the app where the pointer is (its menu opens there). The
+                    // second click of a double click is WM_LBUTTONDBLCLK and its release, as
+                    // USER32 delivers them after the click that came before (the panel's).
                     POINT p{(at.left + at.right) / 2, (at.top + at.bottom) / 2};
                     ScreenToClient(it->toolbar, &p);
                     const LPARAM pos = MAKELPARAM(p.x, p.y);
                     PostMessageW(it->toolbar, WM_MOUSEMOVE, 0, pos);
-                    PostMessageW(it->toolbar, job.right ? WM_RBUTTONDOWN : WM_LBUTTONDOWN, job.right ? MK_RBUTTON : MK_LBUTTON, pos);
-                    hr = PostMessageW(it->toolbar, job.right ? WM_RBUTTONUP : WM_LBUTTONUP, 0, pos) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
+                    if (job.dbl && !job.right) {
+                        PostMessageW(it->toolbar, WM_LBUTTONDBLCLK, MK_LBUTTON, pos);
+                        hr = PostMessageW(it->toolbar, WM_LBUTTONUP, 0, pos) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
+                    } else {
+                        PostMessageW(it->toolbar, job.right ? WM_RBUTTONDOWN : WM_LBUTTONDOWN, job.right ? MK_RBUTTON : MK_LBUTTON, pos);
+                        hr = PostMessageW(it->toolbar, job.right ? WM_RBUTTONUP : WM_LBUTTONUP, 0, pos) ? S_OK : HRESULT_FROM_WIN32(GetLastError());
+                    }
                 } else if (it != buttons.end() && it->element) {
                     if (job.right) {
                         winrt::com_ptr<IUIAutomationElement3> e3 = it->element.try_as<IUIAutomationElement3>();
                         hr = e3 ? e3->ShowContextMenu() : E_NOINTERFACE;
                     } else {
+                        // Invoke is the icon's left click. A double click is the second one: the
+                        // shell turns two clicks within the double-click time into the app's
+                        // double click, so the panel's click and this one make the pair.
                         winrt::com_ptr<IUIAutomationInvokePattern> invoke;
                         hr = it->element->GetCurrentPatternAs(UIA_InvokePatternId, IID_PPV_ARGS(invoke.put()));
                         if (SUCCEEDED(hr) && invoke)
                             hr = invoke->Invoke();
                     }
                 }
-                Log(L"tray: %s on '%s' (%s) -> 0x%08X", job.right ? L"right click" : L"click", Title(job.icon.tip).c_str(),
+                const wchar_t* click = job.right ? L"right click" : job.dbl ? L"double click" : L"click";
+                Log(L"tray: %s on '%s' (%s) -> 0x%08X", click, Title(job.icon.tip).c_str(),
                     job.icon.exe.empty() ? L"-" : PathFindFileNameW(job.icon.exe.c_str()), unsigned(hr));
                 PostMessageW(notify_, msg_, 1, 0);
                 continue;

@@ -2,7 +2,10 @@
 // panel. Read from the shell's UI Automation tree: the taskbar's and the
 // overflow window's tray buttons are there even while hidden, named by their
 // tooltips. A click is forwarded the same way: Invoke is the icon's left click,
-// ShowContextMenu its right click (the app opens its own menu). Nothing is
+// ShowContextMenu its right click (the app opens its own menu). A double click
+// is forwarded as its second click, which apps that open only on one wait for:
+// the classic tray's toolbar takes WM_LBUTTONDBLCLK, the XAML tray a second
+// Invoke within the double-click time (the panel sent the first). Nothing is
 // injected into Explorer. Reading never opens its UI; an explicit icon action
 // may initialize its lazy overflow. The picture of
 // an icon comes from Windows' record of tray icons (NotifyIconSettings: the
@@ -54,8 +57,9 @@ public:
     std::vector<TrayIcon> Icons() const;
     bool Loaded() const;
     bool Available() const; // the shell's tray was found in the last read
-    // A left click (Invoke) or a right click (the context menu) on `icon`.
-    void Click(const TrayIcon& icon, bool right);
+    // A left click (Invoke), the second click of a double click, or a right click
+    // (the context menu) on `icon`.
+    void Click(const TrayIcon& icon, bool right, bool dbl = false);
     // Opens an existing background session; false when the app is not in the tray/running.
     bool OpenExisting(const std::wstring& exe);
 
@@ -67,6 +71,7 @@ private:
         bool refresh = false;
         TrayIcon icon;
         bool right = false;
+        bool dbl = false; // the second click of a double click
     };
     void Worker();
     HWND notify_;
