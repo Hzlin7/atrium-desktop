@@ -39,7 +39,7 @@ internal sealed class BarSettings
     public double Magnify { get; set; } = 1.7;         // icon scale under the pointer, 1 = off
     public bool HoverRise { get; set; }               // glass follows the magnification wave (off unless chosen)
     public bool RiseNear { get; set; } = true;         // and for a pointer resting just above the bar
-    public bool MagnifyNear { get; set; } = true;      // the icons magnify for that pointer too, on its own switch
+    public bool MagnifyNear { get; set; }              // the icons magnify for that pointer too, on its own switch (off unless chosen)
     public double NearEnter { get; set; } = 40;        // DIP above the glass where that starts
     public double NearLeave { get; set; } = 48;        // and where it lets go again
     public bool AutoWidth { get; set; } = true;

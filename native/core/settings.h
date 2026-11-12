@@ -45,7 +45,7 @@ struct Settings {
     // A pointer resting just above the bar is answered ahead of time: the glass rises
     // to it (with hoverRise) and the icons magnify — each on its own switch.
     bool riseNear = true;
-    bool magnifyNear = true;
+    bool magnifyNear = false; // off unless chosen: the icons would grow under a pointer working just above the bar
     double nearEnter = 40, nearLeave = 48; // DIP above the glass where that starts, and where it lets go
     bool autoWidth = true;           // shrink to the content
     bool showClock = true;

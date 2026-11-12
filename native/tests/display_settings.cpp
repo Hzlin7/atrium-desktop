@@ -60,6 +60,7 @@ void CheckSettings()
     Require(Settings::FromJson(settings.ToJson(), Settings{}, parsed) && parsed.showClockSeconds, "clock seconds survive saving");
     Require(Settings::FromJson(LR"({})", Settings{}, parsed) && !parsed.showClockSeconds && parsed.showClock,
         "old settings keep the clock at minutes");
+    Require(Settings::FromJson(LR"({})", Settings{}, parsed) && !parsed.magnifyNear, "icons do not magnify above the bar unless chosen");
     Require(Settings::FromJson(LR"({"showClockSeconds":true})", settings, parsed) && parsed.showClockSeconds && parsed.showClock,
         "clock seconds toggle independently of the clock");
     Require(Settings::FromJson(LR"({"showClockSeconds":"bad"})", settings, parsed) && parsed.showClockSeconds,

@@ -33,6 +33,8 @@ parsed = BarSettings.FromJson(JsonNode.Parse("""{"stageMinimize":true}""")!.AsOb
 Require(parsed.StageMinimize && BarSettings.FromJson(parsed.ToJson(), new()).StageMinimize && !new BarSettings().SameAs(parsed),
     "Minimizing to Stage Manager must survive a round trip and mark the settings dirty.");
 Require(!BarSettings.FromJson(new JsonObject(), new()).ShowClockSeconds, "Old files must keep the clock at minutes.");
+Require(!new BarSettings().MagnifyNear && !BarSettings.FromJson(new JsonObject(), new()).MagnifyNear,
+    "Icons must not magnify above the bar unless chosen.");
 parsed = BarSettings.FromJson(JsonNode.Parse("""{"showClockSeconds":true}""")!.AsObject(), new());
 Require(parsed.ShowClockSeconds && parsed.ShowClock &&
         BarSettings.FromJson(parsed.ToJson(), new()).SameAs(parsed) && !new BarSettings().SameAs(parsed),

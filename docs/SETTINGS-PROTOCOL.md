@@ -39,7 +39,7 @@
 | `magnify` | number | 1–2 | 1.7 | 悬停放大：指针下图标的缩放倍数，相邻图标按波形放大；1 为关闭 |
 | `hoverRise` | bool | | false | 形状页的“跟随鼠标拱起”：背景随鼠标局部向上延伸，幅度复用 `magnify`；关闭后保持图标放大。默认关闭，旧配置没有这一项时也是关闭 |
 | `riseNear` | bool | | true | “栏上方提前拱起”：指针停在栏上方、进入触发区（不必进到栏里）时玻璃先拱起来，图标不变大。只在 `hoverRise` 开着时有效 |
-| `magnifyNear` | bool | | true | “栏上方提前放大图标”：同样的触发区里图标提前放大。与 `hoverRise` 无关，单独生效 |
+| `magnifyNear` | bool | | false | “栏上方提前放大图标”：同样的触发区里图标提前放大。与 `hoverRise` 无关，单独生效。默认关闭，旧配置没有这一项时也是关闭 |
 | `nearEnter` | number | 2–160 | 40 | 触发区：指针离玻璃顶边多近（DIP）开始响应 |
 | `nearLeave` | number | 2–200 | 48 | 触发区：已响应后指针退到多远（DIP）才收回；小于 `nearEnter` 时按 `nearEnter` 算 |
 | `autoWidth` | bool | | true | 宽度随内容伸缩，最大为 `width` |
