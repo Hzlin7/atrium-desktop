@@ -68,6 +68,7 @@ add_executable(atrium_core WIN32
     ui/window_preview.cpp
     ui/widget_faces.cpp
     shell/notification_listener.cpp
+    shell/usb_volume.cpp
     render/bar_painter.cpp
     render/capture.cpp
     render/desktop_backdrop.cpp
@@ -99,4 +100,4 @@ target_include_directories(atrium_core PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(atrium_core PRIVATE
     windowsapp d3d11 dxgi dcomp d2d1 dwrite shcore user32 gdi32 shell32 ole32
     dwmapi version propsys shlwapi oleaut32 uuid imm32 powrprof wlanapi windowscodecs winhttp setupapi taskschd
-    iphlpapi)
+    iphlpapi advapi32)

@@ -266,6 +266,13 @@ const Entry kEnglish[] = {
     {L"\n静音", L"\nMuted"},
     {L"通知  ·  %d", L"Notifications  ·  %d"},
     {L"%s 已下载完成，可在关于中选择重启更新。", L"%s has been downloaded. Restart from About to install it."},
+    // main.cpp: the USB device card (shell/usb_volume.h).
+    {L"安全删除硬件", L"Safe to remove hardware"},
+    {L"USB 设备已移除", L"USB device removed"},
+    {L"「%s」现在可以安全地拔出。", L"\"%s\" can now be safely unplugged."},
+    {L"「%s」已从计算机移除。", L"\"%s\" has been removed from the computer."},
+    {L"、", L", "}, // the volume names joined in the card's body
+
     {L"明天 %s小时", L"Tomorrow %s h"},
     {L"昨天 %s小时", L"Yesterday %s h"},
     {L"今天 %s小时", L"Today %s h"},
