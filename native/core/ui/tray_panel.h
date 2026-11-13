@@ -1,12 +1,14 @@
 // Atrium's tray panel: the notification area's icons (TrayModel) in a grid on
 // the bar's glass, above the bar's tray entry. A click is the icon's left
-// click, a right click opens the app's own menu; the name of the icon under
-// the pointer shows below the grid. A button there opens the system's own
-// hidden-icons window as a fallback.
+// click, a second one within the double-click time its double click (some apps
+// open only on that), a right click opens the app's own menu; the name of the
+// icon under the pointer shows below the grid. A button there opens the
+// system's own hidden-icons window as a fallback.
 #pragma once
 
 #include "motion.h"
 #include "shell/tray_model.h"
+#include "ui/double_click.h"
 #include "ui/surface.h"
 
 #include <functional>
@@ -42,7 +44,9 @@ private:
     bool Message(UINT m, WPARAM w, LPARAM l, LRESULT& result);
     void Place();
     std::wstring HitAt(POINT client) const;
+    const TrayIcon* IconAt(const std::wstring& id) const;
     void Activate(const std::wstring& id, bool right);
+    void ClickIcon(const TrayIcon& icon, const std::wstring& id); // a left click: the first of a double click, or its second
     float Hover(Canvas& c, const std::wstring& id, bool on);
     D2D1_SIZE_F Size() const; // content, DIP
     int Cols() const;
@@ -54,6 +58,9 @@ private:
     std::vector<TrayIcon> icons_;
     std::vector<Hit> hits_;
     std::wstring hover_, pressed_;
+    // The icon clicked last, while a second click may still complete a double
+    // click: the panel stays until then (or until the app takes the focus).
+    DoubleClick clicks_;
     bool tracking_ = false;
     RECT anchor_{}, bar_{};
     HWND previous_ = nullptr;

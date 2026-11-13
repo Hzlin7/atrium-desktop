@@ -24,6 +24,13 @@ namespace {
 constexpr float kCell = 40, kIcon = 20, kAir = (kCell - kIcon) / 2; // kAir: from a cell's edge to its icon
 constexpr float kSplit = 14, kFooterH = 24;                            // icons to divider to footer; footer row
 constexpr double kStageMs = 240, kStaggerMs = 14, kRippleMs = 520;
+// A click's panel is closed by this timer unless a second click completes a double
+// click first; Surface's own timers are 0x5A01 and 0x5A03.
+constexpr UINT_PTR kClickTimer = 0x5A11;
+// After a click, this looks once more at where the focus settled: Explorer's hidden
+// overflow window holds it for a moment before (or instead of) the app's window.
+constexpr UINT_PTR kSettleTimer = 0x5A13;
+constexpr UINT kSettleMs = 150;
 
 D2D1_COLOR_F Alpha(D2D1_COLOR_F c, float a) { return D2D1::ColorF(c.r, c.g, c.b, c.a * a); }
 bool In(const D2D1_RECT_F& r, float x, float y) { return x >= r.left && x < r.right && y >= r.top && y < r.bottom; }
@@ -159,6 +166,24 @@ void FollowMenu(POINT at, const std::wstring& exe)
     g_follow.until = GetTickCount64() + 3000; // slow apps take a while to show it
     g_follow.hook = SetWinEventHook(EVENT_OBJECT_SHOW, EVENT_OBJECT_LOCATIONCHANGE, nullptr, MenuShown, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
 }
+
+std::wstring ClassOf(HWND h)
+{
+    wchar_t cls[64] = {};
+    if (h)
+        GetClassNameW(h, cls, 64);
+    return cls;
+}
+
+// Whether the focus is on one of the shell's own windows rather than on an app's: a
+// forwarded click gives it to Explorer's hidden overflow window (the tray buttons
+// live there) or to its taskbar, and the app takes it for its window or menu a
+// moment later, if at all.
+bool ShellHasFocus(HWND fg)
+{
+    const std::wstring cls = ClassOf(fg);
+    return cls == L"TopLevelWindowForOverflowXamlIsland" || cls == L"Shell_TrayWnd" || cls == L"Shell_SecondaryTrayWnd";
+}
 } // namespace
 
 TrayPanel::TrayPanel(HINSTANCE instance, TrayModel& model) : surface_(instance, L"Atrium Tray", true), model_(model)
@@ -214,6 +239,10 @@ void TrayPanel::Open(RECT anchor, RECT bar, HWND previous)
     hover_.clear();
     pressed_.clear();
     hoverAnim_.clear();
+    // A click left over from the last time the panel was open completes nothing.
+    KillTimer(surface_.Hwnd(), kClickTimer);
+    KillTimer(surface_.Hwnd(), kSettleTimer);
+    clicks_.Clear();
     openedMs_ = ClockMs();
     model_.Refresh(); // the tooltips and the set change; the panel updates when read
     Place();
@@ -224,6 +253,9 @@ void TrayPanel::Close()
 {
     if (!surface_.Visible())
         return;
+    KillTimer(surface_.Hwnd(), kClickTimer);
+    KillTimer(surface_.Hwnd(), kSettleTimer);
+    clicks_.Clear();
     surface_.Hide();
     lastClosed_ = GetTickCount64();
 }
@@ -337,6 +369,31 @@ std::wstring TrayPanel::HitAt(POINT pt) const
     return {};
 }
 
+const TrayIcon* TrayPanel::IconAt(const std::wstring& id) const
+{
+    if (id.rfind(L"icon:", 0) != 0)
+        return nullptr;
+    size_t i = size_t(std::stoul(id.substr(5)));
+    return i < icons_.size() ? &icons_[i] : nullptr;
+}
+
+void TrayPanel::ClickIcon(const TrayIcon& icon, const std::wstring& id)
+{
+    // A second click on the same icon within Windows' double-click time is a double
+    // click, as on the system taskbar: the app is told so (some open only on one),
+    // and the panel has done its part.
+    if (clicks_.Click(id, GetTickCount64(), GetDoubleClickTime())) {
+        model_.Click(icon, false, true);
+        Close();
+        return;
+    }
+    model_.Click(icon, false);
+    // A left click usually opens the app's window, which takes the focus and closes
+    // the panel. For an app that opens on a double click the panel must stay for the
+    // second click, so it waits one double-click time instead of closing at once.
+    SetTimer(surface_.Hwnd(), kClickTimer, GetDoubleClickTime(), nullptr);
+}
+
 void TrayPanel::Activate(const std::wstring& id, bool right)
 {
     if (id == L"system") {
@@ -347,23 +404,19 @@ void TrayPanel::Activate(const std::wstring& id, bool right)
         }
         return;
     }
-    if (id.rfind(L"icon:", 0) != 0)
-        return;
-    size_t i = size_t(std::stoul(id.substr(5)));
-    if (i >= icons_.size())
+    const TrayIcon* icon = IconAt(id);
+    if (!icon)
         return;
     // We have the foreground: let the app take it for its window or menu.
     AllowSetForegroundWindow(ASFW_ANY);
-    if (right) {
-        POINT at;
-        GetCursorPos(&at);
-        FollowMenu(at, icons_[i].exe);
+    if (!right) {
+        ClickIcon(*icon, id);
+        return;
     }
-    model_.Click(icons_[i], right);
-    // A left click usually opens the app's window: the panel steps aside. A
-    // right click opens the app's menu, which takes the focus and closes it.
-    if (!right)
-        Close();
+    POINT at;
+    GetCursorPos(&at);
+    FollowMenu(at, icon->exe);
+    model_.Click(*icon, true);
 }
 
 bool TrayPanel::Message(UINT m, WPARAM w, LPARAM l, LRESULT& result)
@@ -371,8 +424,17 @@ bool TrayPanel::Message(UINT m, WPARAM w, LPARAM l, LRESULT& result)
     POINT pt{GET_X_LPARAM(l), GET_Y_LPARAM(l)};
     switch (m) {
     case WM_ACTIVATE:
-        if (LOWORD(w) == WA_INACTIVE && surface_.Visible())
-            Close();
+        if (LOWORD(w) == WA_INACTIVE && surface_.Visible()) {
+            // Losing the focus right after a click we forwarded is usually Explorer's
+            // hidden overflow window taking it for a moment (the tray buttons live
+            // there), not the app coming forward. The panel looks again a moment later
+            // instead of stepping aside, so that a second click can still complete a
+            // double click. (lParam is this window itself here, not the one gaining it.)
+            if (clicks_.Waiting())
+                SetTimer(surface_.Hwnd(), kSettleTimer, kSettleMs, nullptr);
+            else
+                Close();
+        }
         return false;
     case WM_MOUSEMOVE: {
         if (!tracking_) {
@@ -417,6 +479,30 @@ bool TrayPanel::Message(UINT m, WPARAM w, LPARAM l, LRESULT& result)
     }
     case WM_KEYDOWN:
         if (w == VK_ESCAPE) {
+            Close();
+            return true;
+        }
+        return false;
+    case WM_TIMER:
+        if (w == kSettleTimer) {
+            KillTimer(surface_.Hwnd(), kSettleTimer);
+            HWND fg = GetForegroundWindow();
+            if (fg == surface_.Hwnd() || ShellHasFocus(fg)) {
+                // Still the shell's own window (or this panel): the click opened
+                // nothing, and the second click of a double click may still come.
+                Log(L"tray: the panel waits for a second click (focus on %s)", ClassOf(fg).c_str());
+            } else {
+                // A window of the app has the focus: the click opened it, and the
+                // panel steps aside as after any click that reached the app.
+                Close();
+            }
+            return true;
+        }
+        if (w == kClickTimer) {
+            // No second click came: the panel steps aside, as it does after a click
+            // that reached the app.
+            KillTimer(surface_.Hwnd(), kClickTimer);
+            clicks_.Clear();
             Close();
             return true;
         }
