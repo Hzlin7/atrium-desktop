@@ -42,6 +42,7 @@ struct TrayIcon {
     bool promoted = false; // on the system taskbar rather than in its overflow
     int index = 0;         // position among the icons of the same place
     std::wstring recordId; // stable Windows identity, also before the overflow UI exists
+    std::vector<int> runtimeId; // UIA identity for a button with no recognised Windows record
 };
 
 class TrayModel {

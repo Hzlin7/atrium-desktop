@@ -339,6 +339,25 @@ struct Found {
     std::wstring recordId;
 };
 
+std::vector<int> RuntimeIdOf(IUIAutomationElement* element)
+{
+    std::vector<int> id;
+    SAFEARRAY* array = nullptr;
+    if (!element || FAILED(element->GetRuntimeId(&array)) || !array)
+        return id;
+    LONG first = 0, last = -1;
+    if (SafeArrayGetDim(array) == 1 && SUCCEEDED(SafeArrayGetLBound(array, 1, &first)) &&
+        SUCCEEDED(SafeArrayGetUBound(array, 1, &last)) && last >= first && last - first < 64) {
+        int* data = nullptr;
+        if (SUCCEEDED(SafeArrayAccessData(array, reinterpret_cast<void**>(&data)))) {
+            id.assign(data, data + (last - first + 1));
+            SafeArrayUnaccessData(array);
+        }
+    }
+    SafeArrayDestroy(array);
+    return id;
+}
+
 // The tray buttons in the taskbar and in the overflow window, in order.
 std::vector<Found> FindButtons(IUIAutomation* uia, bool& available)
 {
@@ -946,6 +965,8 @@ void TrayModel::Worker()
                 t.promoted = buttons[b].promoted;
                 t.index = buttons[b].index;
                 t.recordId = buttons[b].recordId;
+                if (t.recordId.empty())
+                    t.runtimeId = RuntimeIdOf(buttons[b].element.get());
                 if (match[b] >= 0) {
                     const Record& r = records[size_t(match[b])];
                     t.exe = r.exe;
@@ -978,7 +999,8 @@ void TrayModel::Worker()
                 std::lock_guard g(mutex_);
                 changed = !loaded_ || icons.size() != icons_.size() ||
                           !std::equal(icons.begin(), icons.end(), icons_.begin(), [](const TrayIcon& a, const TrayIcon& b) {
-                              return a.tip == b.tip && a.exe == b.exe && a.image == b.image && a.promoted == b.promoted && a.recordId == b.recordId;
+                              return a.tip == b.tip && a.exe == b.exe && a.image == b.image && a.promoted == b.promoted &&
+                                     a.recordId == b.recordId && a.runtimeId == b.runtimeId;
                           });
                 icons_ = std::move(icons);
                 loaded_ = true;

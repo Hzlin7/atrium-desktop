@@ -265,6 +265,14 @@ void TrayPanel::Refresh()
     if (!surface_.Visible())
         return;
     icons_ = model_.Icons();
+    // A press must not move to the replacement icon at the same array index.
+    pressed_.clear();
+    hover_.clear();
+    hits_.clear();
+    if (!std::any_of(icons_.begin(), icons_.end(), [this](const TrayIcon& icon) {
+            return clicks_.WaitingFor(TrayClickIdentity(icon.recordId, icon.runtimeId));
+        }))
+        clicks_.Clear();
     Place();
     surface_.Invalidate();
 }
@@ -377,12 +385,12 @@ const TrayIcon* TrayPanel::IconAt(const std::wstring& id) const
     return i < icons_.size() ? &icons_[i] : nullptr;
 }
 
-void TrayPanel::ClickIcon(const TrayIcon& icon, const std::wstring& id)
+void TrayPanel::ClickIcon(const TrayIcon& icon)
 {
     // A second click on the same icon within Windows' double-click time is a double
     // click, as on the system taskbar: the app is told so (some open only on one),
     // and the panel has done its part.
-    if (clicks_.Click(id, GetTickCount64(), GetDoubleClickTime())) {
+    if (clicks_.Click(TrayClickIdentity(icon.recordId, icon.runtimeId), GetTickCount64(), GetDoubleClickTime())) {
         model_.Click(icon, false, true);
         Close();
         return;
@@ -410,7 +418,7 @@ void TrayPanel::Activate(const std::wstring& id, bool right)
     // We have the foreground: let the app take it for its window or menu.
     AllowSetForegroundWindow(ASFW_ANY);
     if (!right) {
-        ClickIcon(*icon, id);
+        ClickIcon(*icon);
         return;
     }
     POINT at;

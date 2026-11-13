@@ -46,7 +46,7 @@ private:
     std::wstring HitAt(POINT client) const;
     const TrayIcon* IconAt(const std::wstring& id) const;
     void Activate(const std::wstring& id, bool right);
-    void ClickIcon(const TrayIcon& icon, const std::wstring& id); // a left click: the first of a double click, or its second
+    void ClickIcon(const TrayIcon& icon); // a left click: the first of a double click, or its second
     float Hover(Canvas& c, const std::wstring& id, bool on);
     D2D1_SIZE_F Size() const; // content, DIP
     int Cols() const;

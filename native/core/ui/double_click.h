@@ -5,8 +5,24 @@
 #pragma once
 
 #include <string>
+#include <vector>
 
 namespace atrium {
+
+// Display positions and tooltips can change between clicks. Prefer Windows'
+// persistent record; an otherwise unknown UIA button has its own runtime ID.
+// Without either identity, leave the clicks unpaired.
+inline std::wstring TrayClickIdentity(const std::wstring& recordId, const std::vector<int>& runtimeId)
+{
+    if (!recordId.empty())
+        return L"record:" + recordId;
+    if (runtimeId.empty())
+        return {};
+    std::wstring id = L"uia";
+    for (int part : runtimeId)
+        id += L":" + std::to_wstring(part);
+    return id;
+}
 
 struct DoubleClick {
     // Records a click on `id` at `now` (ms of an increasing clock): true when it
@@ -25,6 +41,7 @@ struct DoubleClick {
     }
     // Whether a click waits for its second one.
     bool Waiting() const { return !last.empty(); }
+    bool WaitingFor(const std::wstring& id) const { return !id.empty() && id == last; }
     void Clear()
     {
         last.clear();

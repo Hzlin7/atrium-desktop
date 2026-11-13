@@ -50,6 +50,36 @@ void CheckEdges()
         "a clock that goes backwards does not make a double click");
 }
 
+void CheckStableIdentities()
+{
+    struct Icon { std::wstring record; std::vector<int> runtime; };
+    std::vector<Icon> icons{{L"app-A", {}}, {L"app-B", {}}};
+    DoubleClick clicks;
+    auto clickAt = [&](size_t index, unsigned long long now) {
+        const auto& icon = icons[index];
+        return clicks.Click(TrayClickIdentity(icon.record, icon.runtime), now, kWindow);
+    };
+    Require(!clickAt(0, 1000), "A's first click is single");
+    icons.erase(icons.begin()); // B now occupies the same display position
+    Require(!clickAt(0, 1100), "a replacement icon must not inherit A's first click");
+
+    icons = {{L"app-A", {}}, {L"app-B", {}}};
+    clicks.Clear();
+    Require(!clickAt(0, 2000), "A starts another pair");
+    std::swap(icons[0], icons[1]);
+    Require(clickAt(1, 2100), "A's identity survives reordering");
+
+    const auto unknown = TrayClickIdentity(L"", {3, 101, 7});
+    const auto other = TrayClickIdentity(L"", {3, 101, 8});
+    Require(!unknown.empty() && unknown != other, "unknown UIA icons have distinct runtime identities");
+    Require(!clicks.Click(unknown, 3000, kWindow) && !clicks.Click(other, 3100, kWindow),
+            "distinct UIA icons do not form a pair");
+    Require(clicks.Click(other, 3200, kWindow), "one unknown UIA icon still supports pairing");
+    Require(TrayClickIdentity(L"app-A", {3, 1}) == TrayClickIdentity(L"app-A", {3, 2}),
+            "a persistent Windows identity survives a rebuilt UIA element");
+    Require(TrayClickIdentity(L"", {}).empty(), "no identity is safer than pairing by position or tooltip");
+}
+
 } // namespace
 
 int main()
@@ -58,6 +88,7 @@ int main()
         CheckPair();
         CheckOtherIcons();
         CheckEdges();
+        CheckStableIdentities();
         std::cout << "Double-click pairing checks passed.\n";
     } catch (const std::exception& error) {
         std::cerr << "FAIL: " << error.what() << '\n';
