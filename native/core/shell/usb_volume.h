@@ -11,7 +11,12 @@
 #include <dbt.h>
 
 #include <map>
+#include <condition_variable>
+#include <functional>
+#include <mutex>
+#include <optional>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace atrium {
@@ -54,34 +59,65 @@ inline std::wstring JoinNames(const std::vector<std::wstring>& names)
     return joined;
 }
 
-// The drive letters Windows reports as removable right now, as a bit mask
-// (bit 0 = A:, bit 1 = B: ...).
-unsigned RemovableVolumeMask();
+struct UsbVolume {
+    std::wstring label;
+    std::wstring identity; // volume GUID path; distinguishes reuse of one drive letter
+};
 
-// Every drive letter present right now, as a bit mask.
-unsigned PresentVolumeMask();
+struct UsbVolumeSnapshot {
+    unsigned present = 0; // all drive letters, including internal and network drives
+    std::map<wchar_t, UsbVolume> volumes; // removable media and fixed-media USB disks
+};
+
+// DBTF_MEDIA describes a change of media, not the bus a disk is attached to.
+inline bool WatchUsbVolume(UINT driveType, bool usbBus)
+{
+    return driveType == DRIVE_REMOVABLE || (driveType == DRIVE_FIXED && usbBus);
+}
+
+// May perform device I/O. Only the monitor's worker calls this in production.
+std::optional<UsbVolumeSnapshot> ReadUsbVolumeSnapshot();
 
 class UsbVolumes {
 public:
-    // The WM_DEVICECHANGE that brought an event: its kind, and the volume
-    // payload's unitmask and DBTF_MEDIA flag (both empty for other payloads,
-    // which only ask for a re-read of the drives).
+    // Only a volume payload identifies drive letters. Interface events carry
+    // no unitmask and request another snapshot; they are not proof of an eject.
     struct Event {
         UINT kind = 0; // DBT_DEVICEARRIVAL, DBT_DEVICEREMOVEPENDING, DBT_DEVICEREMOVECOMPLETE
         unsigned unitmask = 0;
-        bool media = false;
     };
 
-    UsbVolumes(); // records what is attached now, so a drive present since before is watched too
-
-    // Reads the drives again. The watched letters that have gone since the
-    // last call come back, most recently seen labels included.
-    std::vector<RemovedVolume> Sync(const Event& event);
+    void Observe(const Event& event);
+    // State reconciliation only: no Windows queries and no disk I/O.
+    std::vector<RemovedVolume> Sync(const UsbVolumeSnapshot& snapshot);
 
 private:
-    unsigned watched_ = 0;  // the letters to report when they go
     unsigned ejecting_ = 0; // the letters of a device Windows is ejecting (a REMOVEPENDING came)
-    std::map<wchar_t, std::wstring> labels_;
+    std::map<wchar_t, UsbVolume> watched_;
+};
+
+// Construction and Changed never inspect a disk. Results are queued for the
+// UI thread, and ready only wakes it; no notification object crosses threads.
+class UsbVolumeMonitor {
+public:
+    using Reader = std::function<std::optional<UsbVolumeSnapshot>()>;
+    explicit UsbVolumeMonitor(std::function<void()> ready, Reader reader = ReadUsbVolumeSnapshot);
+    ~UsbVolumeMonitor();
+    UsbVolumeMonitor(const UsbVolumeMonitor&) = delete;
+    UsbVolumeMonitor& operator=(const UsbVolumeMonitor&) = delete;
+    void Changed(const UsbVolumes::Event& event);
+    std::vector<RemovedVolume> TakeRemoved();
+
+private:
+    void Worker();
+    std::function<void()> ready_;
+    Reader reader_;
+    std::mutex mutex_;
+    std::condition_variable changed_;
+    std::vector<UsbVolumes::Event> events_;
+    std::vector<RemovedVolume> removed_;
+    bool stopping_ = false;
+    std::thread worker_;
 };
 
 } // namespace atrium

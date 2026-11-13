@@ -66,6 +66,7 @@ constexpr UINT WM_VOLUME = WM_APP + 7;        // the default playback device's v
 constexpr UINT WM_STATUS = WM_APP + 10;       // lParam: SystemStatus*, read off the UI thread
 constexpr UINT WM_UPDATE_READY = WM_APP + 11; // background package is validated and ready
 constexpr UINT WM_WIN_KEY = WM_APP + 12;      // the Windows key alone (wParam 0, winKeyStart), Win + 1..9, 0 (1..10, winNumbers)
+constexpr UINT WM_USB = WM_APP + 13;          // the device worker has queued removal notices
 constexpr UINT_PTR kTrayTimer = 0x51;
 constexpr UINT_PTR kStatusTimer = 0x52;       // the bar's status icon
 constexpr UINT_PTR kTrayFocusTimer = 0x53;    // after a forwarded tray click
@@ -98,7 +99,7 @@ struct App {
     std::unique_ptr<StartMenu> start;
     std::unique_ptr<Notifications> notes;
     std::unique_ptr<NotificationListener> listener;
-    std::unique_ptr<UsbVolumes> usb;
+    std::unique_ptr<UsbVolumeMonitor> usb;
     std::unique_ptr<UpdateChecker> updates;
     std::unique_ptr<WeChatSource> wechat;
     std::unique_ptr<FeishuSource> feishu;
@@ -1179,14 +1180,14 @@ LRESULT CALLBACK HostProc(HWND h, UINT m, WPARAM w, LPARAM l)
         // A removable drive went, or is going: Windows' own toast for it is a
         // balloon of its tray icon and Do Not Disturb swallows it whole, so the
         // card is Atrium's own (shell/usb_volume.h).
-        if (g_app.usb && (w == DBT_DEVICEARRIVAL || w == DBT_DEVICEREMOVEPENDING || w == DBT_DEVICEREMOVECOMPLETE)) {
+        if (g_app.usb && (w == DBT_DEVICEARRIVAL || w == DBT_DEVICEREMOVEPENDING ||
+                          w == DBT_DEVICEQUERYREMOVEFAILED || w == DBT_DEVICEREMOVECOMPLETE)) {
             UsbVolumes::Event event;
             event.kind = UINT(w);
             if (const auto* header = reinterpret_cast<const DEV_BROADCAST_HDR*>(l);
                 header && header->dbch_devicetype == DBT_DEVTYP_VOLUME) {
                 const auto& volume = *reinterpret_cast<const DEV_BROADCAST_VOLUME*>(l);
                 event.unitmask = volume.dbcv_unitmask;
-                event.media = (volume.dbcv_flags & DBTF_MEDIA) != 0;
             } else if (
                 header && header->dbch_devicetype == DBT_DEVTYP_DEVICEINTERFACE &&
                 reinterpret_cast<const DEV_BROADCAST_DEVICEINTERFACE_W*>(l)->dbcc_classguid == kVolumeInterface) {
@@ -1194,7 +1195,13 @@ LRESULT CALLBACK HostProc(HWND h, UINT m, WPARAM w, LPARAM l)
             } else {
                 break; // another device kind, or a broadcast without a payload
             }
-            const std::vector<RemovedVolume> removed = g_app.usb->Sync(event);
+            g_app.usb->Changed(event); // only queues the event; never reads a drive on this thread
+            return TRUE;
+        }
+        break;
+    case WM_USB:
+        if (g_app.usb) {
+            const std::vector<RemovedVolume> removed = g_app.usb->TakeRemoved();
             if (!removed.empty() && g_app.notes && g_app.barOn.value_or(true)) {
                 std::vector<std::wstring> names;
                 bool ejected = true;
@@ -1216,9 +1223,8 @@ LRESULT CALLBACK HostProc(HWND h, UINT m, WPARAM w, LPARAM l)
                 }
                 g_app.notes->Post(std::move(notice));
             }
-            return TRUE;
         }
-        break;
+        return 0;
     case WM_TRAY_ICONS:
         if (w == 1) // a click was forwarded: see where the focus ends up
             SetTimer(h, kTrayFocusTimer, 600, nullptr);
@@ -1533,7 +1539,7 @@ int WINAPI wWinMain(HINSTANCE instance, HINSTANCE, PWSTR cmdLine, int)
     g_app.control->onStage = SetStageManager;
     g_app.widgets->onStatusRequest = UpdateStatus;
     g_app.status = std::make_unique<SystemStatusReader>(g_app.host, WM_STATUS, WM_VOLUME);
-    g_app.usb = std::make_unique<UsbVolumes>(); // the USB card's source of device events
+    g_app.usb = std::make_unique<UsbVolumeMonitor>([host = g_app.host] { PostMessageW(host, WM_USB, 0, 0); });
     g_app.widgets->menu = g_app.menu.get();
     g_app.widgets->onAddWidgets = [] { OpenSettings(L"widgets"); };
     g_app.widgets->onCalendar = [] {

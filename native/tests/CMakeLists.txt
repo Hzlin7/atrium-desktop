@@ -30,8 +30,10 @@ add_test(NAME quiet_profile COMMAND quiet_profile_tests)
 
 add_executable(usb_volume_tests
     usb_volume.cpp
+    ../core/shell/usb_volume.cpp
     ../core/localization.cpp
     ../core/log.cpp)
 target_include_directories(usb_volume_tests PRIVATE ../core)
 target_compile_definitions(usb_volume_tests PRIVATE NOMINMAX WIN32_LEAN_AND_MEAN)
 add_test(NAME usb_volume COMMAND usb_volume_tests)
+set_tests_properties(usb_volume PROPERTIES TIMEOUT 20)
